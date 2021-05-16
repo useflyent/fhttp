@@ -14,7 +14,7 @@ SETTINGS_HEADER_TABLE_SIZE
 ```
 (will add the rest later, as i can't connect to [notion](https://www.notion.so/) from my computer)
 
-## Backwards compatible with net/http
+## Backward compatible with net/http
 Although this library is an extension of `net/http`, it is also meant to be backward compatible. Replacing
 
 ```go
