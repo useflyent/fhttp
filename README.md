@@ -10,9 +10,14 @@ Allows for pseudo header order and normal header order. Most of the code is take
 ## Connection settings (TODO)
 Has Chrome-like connection settings:
 ```
-SETTINGS_HEADER_TABLE_SIZE
+SETTINGS_HEADER_TABLE_SIZE = 65536
+SETTINGS_ENABLE_PUSH = 1
+SETTINGS_MAX_CONCURRENT_STREAMS = 1000
+SETTINGS_INITIAL_WINDOW_SIZE = 6291456
+SETTINGS_MAX_FRAME_SIZE = 16384
+SETTINGS_MAX_HEADER_LIST_SIZE = 262144
 ```
-(will add the rest later, as i can't connect to [notion](https://www.notion.so/) from my computer)
+
 
 ## Backward compatible with net/http
 Although this library is an extension of `net/http`, it is also meant to be backward compatible. Replacing

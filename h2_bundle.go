@@ -28,7 +28,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/zMrKrabz/fhttp/httptrace"
 	"io"
 	"io/ioutil"
 	"log"
@@ -47,6 +46,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/zMrKrabz/fhttp/httptrace"
 	"golang.org/x/net/http/httpguts"
 	"golang.org/x/net/http2/hpack"
 	"golang.org/x/net/idna"
@@ -8003,6 +8003,12 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 	// continue to reuse the hpack encoder for future requests)
 	for k, vv := range req.Header {
 		if !httpguts.ValidHeaderFieldName(k) {
+
+			if k == HeaderOrderKey {
+				req.Header.Del(k)
+				continue
+			}
+
 			return nil, fmt.Errorf("invalid HTTP header name %q", k)
 		}
 		for _, v := range vv {
