@@ -2703,6 +2703,8 @@ func (mh *http2MetaHeadersFrame) checkPseudos() error {
 			}
 		}
 	}
+	fmt.Println("Done Checking pseudo headers")
+
 	if isRequest && isResponse {
 		return http2errMixPseudoHeaderTypes
 	}
@@ -2810,6 +2812,7 @@ func (fr *http2Framer) readMetaFrame(hf *http2HeadersFrame) (*http2MetaHeadersFr
 		}
 		return nil, http2StreamError{mh.StreamID, http2ErrCodeProtocol, err}
 	}
+
 	return mh, nil
 }
 
@@ -8004,8 +8007,9 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 	for k, vv := range req.Header {
 		if !httpguts.ValidHeaderFieldName(k) {
 
-			if k == HeaderOrderKey {
-				req.Header.Del(k)
+			// If the header is magic key, the headers would have been ordered
+			// by this step. It is ok to delete and not raise an error
+			if k == HeaderOrderKey || k == PHeaderOrderKey {
 				continue
 			}
 
@@ -8024,15 +8028,43 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 		// target URI (the path-absolute production and optionally a '?' character
 		// followed by the query production (see Sections 3.3 and 3.4 of
 		// [RFC3986]).
-		f(":authority", host)
+
+		pHeaderOrder, ok := req.Header[PHeaderOrderKey]
 		m := req.Method
 		if m == "" {
 			m = MethodGet
 		}
-		f(":method", m)
-		if req.Method != "CONNECT" {
-			f(":path", path)
-			f(":scheme", req.URL.Scheme)
+		if ok {
+			// follow based on pseudo header order
+			for _, p := range pHeaderOrder {
+				switch p {
+				case ":authority":
+					f(":authority", host)
+				case ":method":
+					f(":method", req.Method)
+				case ":path":
+					if req.Method != "CONNECT" {
+						f(":path", path)
+					}
+				case ":scheme":
+					if req.Method != "CONNECT" {
+						f(":scheme", req.URL.Scheme)
+					}
+
+				// (zMrKrabz): Currently skips over unrecognized pheader fields,
+				// should throw error or something but works for now.
+				default:
+					continue
+				}
+			}
+		} else {
+			fmt.Println("No pheader defined")
+			f(":authority", host)
+			f(":method", m)
+			if req.Method != "CONNECT" {
+				f(":path", path)
+				f(":scheme", req.URL.Scheme)
+			}
 		}
 		if trailers != "" {
 			f("trailer", trailers)
@@ -8124,6 +8156,11 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 
 	// Header list size is ok. Write the headers.
 	enumerateHeaders(func(name, value string) {
+		// skips over writing magic key headers
+		if name == PHeaderOrderKey || name == HeaderOrderKey {
+			return
+		}
+
 		name = strings.ToLower(name)
 		cc.writeHeader(name, value)
 		if traceHeaders {

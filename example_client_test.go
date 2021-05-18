@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	http "github.com/zMrKrabz/fhttp"
-	"github.com/zMrKrabz/fhttp/httptrace"
 )
 
 // Basic http test with Header Order
@@ -129,15 +128,8 @@ func TestWithCert(t *testing.T) {
 			"sec-fetch-dest",
 			"accept-encoding",
 		},
+		http.PHeaderOrderKey: {":method", ":authority", ":scheme", ":path"},
 	}
-
-	trace := &httptrace.ClientTrace{
-		TLSHandshakeDone: func(cs tls.ConnectionState, e error) {
-			fmt.Printf("TLS Handshake: %v", cs)
-		},
-	}
-
-	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 
 	resp, err := client.Do(req)
 
