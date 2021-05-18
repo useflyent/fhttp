@@ -521,7 +521,6 @@ func (t *Transport) roundTrip(req *Request) (*Response, error) {
 
 				// Allow the HeaderOrderKey and PHeaderOrderKey magic string, this will be handled further.
 				if k == HeaderOrderKey || k == PHeaderOrderKey {
-					fmt.Printf("Allowed %v\n", k)
 					continue
 				}
 
