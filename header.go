@@ -35,6 +35,11 @@ type Header map[string][]string
 // with entity-header fields.
 const HeaderOrderKey = "Header-Order:"
 
+// PHeaderOrderKey is a magic key for setting http2 pseudo header order.
+// If the header is nil it will use regular GoLang header order.
+// Valid fields are :authority, :method, :path, :scheme
+const PHeaderOrderKey = "PHeader-Order:"
+
 // Add adds the key, value pair to the header.
 // It appends to any existing values associated with key.
 // The key is case insensitive; it is canonicalized by

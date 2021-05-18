@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	http "github.com/zMrKrabz/fhttp"
-	"github.com/zMrKrabz/fhttp/httptrace"
 )
 
 // Basic http test with Header Order
@@ -110,18 +109,21 @@ func TestWithCert(t *testing.T) {
 		"sec-ch-ua":                 {"\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"90\", \"Google Chrome\";v=\"90\""},
 		"sec-ch-ua-mobile":          {"?0"},
 		"upgrade-insecure-requests": {"1"},
-		"user-agent":                {"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36"},
+		"user-agent":                {"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36", "I shouldn't be here"},
 		"accept":                    {"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"},
 		"sec-fetch-site":            {"none"},
 		"sec-fetch-mode":            {"navigate"},
 		"sec-fetch-user":            {"?1"},
+		"cookie":                    {"cf_clearance=67f509a97bae8bb8349523a14c0ca3d7d8460c93-1620778862-0-250", "wp_customerGroup=NOT+LOGGED+IN"},
 		"sec-fetch-dest":            {"document"},
 		"accept-encoding":           {"gzip, deflate, br"},
+		"not-included-header":       {"should be last"},
 		http.HeaderOrderKey: {
 			"sec-ch-ua",
 			"sec-ch-ua-mobile",
 			"upgrade-insecure-requests",
 			"user-agent",
+			"cookie",
 			"accept",
 			"sec-fetch-site",
 			"sec-fetch-mode",
@@ -129,15 +131,8 @@ func TestWithCert(t *testing.T) {
 			"sec-fetch-dest",
 			"accept-encoding",
 		},
+		http.PHeaderOrderKey: {":method", ":authority", ":scheme", ":path"},
 	}
-
-	trace := &httptrace.ClientTrace{
-		TLSHandshakeDone: func(cs tls.ConnectionState, e error) {
-			fmt.Printf("TLS Handshake: %v", cs)
-		},
-	}
-
-	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 
 	resp, err := client.Do(req)
 
@@ -155,3 +150,7 @@ func TestWithCert(t *testing.T) {
 		t.Error(err.Error())
 	}
 }
+
+// Test with cookies
+// Test with missing in header order, that should be added
+// Test for UA that has empty string, excluding UA from being part of headers

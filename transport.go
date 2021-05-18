@@ -519,8 +519,8 @@ func (t *Transport) roundTrip(req *Request) (*Response, error) {
 		for k, vv := range req.Header {
 			if !httpguts.ValidHeaderFieldName(k) {
 
-				// Allow the HeaderOrderKey magic string, this will be handled further.
-				if k == HeaderOrderKey {
+				// Allow the HeaderOrderKey and PHeaderOrderKey magic string, this will be handled further.
+				if k == HeaderOrderKey || k == PHeaderOrderKey {
 					continue
 				}
 
