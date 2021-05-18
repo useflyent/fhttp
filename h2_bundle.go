@@ -8070,62 +8070,79 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 			f("trailer", trailers)
 		}
 
+		// Formats and writes headers with f function
 		var didUA bool
-		for k, vv := range req.Header {
-			if strings.EqualFold(k, "host") || strings.EqualFold(k, "content-length") {
-				// Host is :authority, already sent.
-				// Content-Length is automatic, set below.
-				continue
-			} else if strings.EqualFold(k, "connection") || strings.EqualFold(k, "proxy-connection") ||
-				strings.EqualFold(k, "transfer-encoding") || strings.EqualFold(k, "upgrade") ||
-				strings.EqualFold(k, "keep-alive") {
-				// Per 8.1.2.2 Connection-Specific Header
-				// Fields, don't send connection-specific
-				// fields. We have already checked if any
-				// are error-worthy so just ignore the rest.
-				continue
-			} else if strings.EqualFold(k, "user-agent") {
-				// Match Go's http1 behavior: at most one
-				// User-Agent. If set to nil or empty string,
-				// then omit it. Otherwise if not mentioned,
-				// include the default (below).
-				didUA = true
-				if len(vv) < 1 {
-					continue
-				}
-				vv = vv[:1]
-				if vv[0] == "" {
-					continue
-				}
-			} else if strings.EqualFold(k, "cookie") {
-				// Per 8.1.2.5 To allow for better compression efficiency, the
-				// Cookie header field MAY be split into separate header fields,
-				// each with one or more cookie-pairs.
-				for _, v := range vv {
-					for {
-						p := strings.IndexByte(v, ';')
-						if p < 0 {
-							break
-						}
-						f("cookie", v[:p])
-						p++
-						// strip space after semicolon if any.
-						for p+1 <= len(v) && v[p] == ' ' {
-							p++
-						}
-						v = v[p:]
-					}
-					if len(v) > 0 {
-						f("cookie", v)
-					}
-				}
-				continue
-			}
+		if headerOrder, ok := req.Header[HeaderOrderKey]; ok {
+			for _, k := range headerOrder {
+				// If header is declared in order but has no values, skip it
+				vv, ok := req.Header[k]
 
-			for _, v := range vv {
-				f(k, v)
+				if !ok {
+					continue
+				}
+
+				for _, v := range vv {
+					f(k, v)
+				}
+			}
+		} else {
+			for k, vv := range req.Header {
+				if strings.EqualFold(k, "host") || strings.EqualFold(k, "content-length") {
+					// Host is :authority, already sent.
+					// Content-Length is automatic, set below.
+					continue
+				} else if strings.EqualFold(k, "connection") || strings.EqualFold(k, "proxy-connection") ||
+					strings.EqualFold(k, "transfer-encoding") || strings.EqualFold(k, "upgrade") ||
+					strings.EqualFold(k, "keep-alive") {
+					// Per 8.1.2.2 Connection-Specific Header
+					// Fields, don't send connection-specific
+					// fields. We have already checked if any
+					// are error-worthy so just ignore the rest.
+					continue
+				} else if strings.EqualFold(k, "user-agent") {
+					// Match Go's http1 behavior: at most one
+					// User-Agent. If set to nil or empty string,
+					// then omit it. Otherwise if not mentioned,
+					// include the default (below).
+					didUA = true
+					if len(vv) < 1 {
+						continue
+					}
+					vv = vv[:1]
+					if vv[0] == "" {
+						continue
+					}
+				} else if strings.EqualFold(k, "cookie") {
+					// Per 8.1.2.5 To allow for better compression efficiency, the
+					// Cookie header field MAY be split into separate header fields,
+					// each with one or more cookie-pairs.
+					for _, v := range vv {
+						for {
+							p := strings.IndexByte(v, ';')
+							if p < 0 {
+								break
+							}
+							f("cookie", v[:p])
+							p++
+							// strip space after semicolon if any.
+							for p+1 <= len(v) && v[p] == ' ' {
+								p++
+							}
+							v = v[p:]
+						}
+						if len(v) > 0 {
+							f("cookie", v)
+						}
+					}
+					continue
+				}
+
+				for _, v := range vv {
+					f(k, v)
+				}
 			}
 		}
+
 		if http2shouldSendReqContentLength(req.Method, contentLength) {
 			f("content-length", strconv.FormatInt(contentLength, 10))
 		}

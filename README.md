@@ -21,7 +21,7 @@ SETTINGS_MAX_HEADER_LIST_SIZE = 262144
 ## gzip, deflate, br encoding (TODO)
 Actually supports and implements encoding `gzip, deflate, br`
 
-## Pseudo header order (TODO)
+## Pseudo header order
 Supports pseudo header order for http2 to mitigate fingerprinting. Read more about it [here](https://www.akamai.com/uk/en/multimedia/documents/white-paper/passive-fingerprinting-of-http2-clients-white-paper.pdf)
 
 ## Backward compatible with net/http
