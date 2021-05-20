@@ -2047,6 +2047,8 @@ func (f *http2SettingsFrame) ForeachSetting(fn func(http2Setting) error) error {
 // It will perform exactly one Write to the underlying Writer.
 // It is the caller's responsibility to not call other Write methods concurrently.
 func (f *http2Framer) WriteSettings(settings ...http2Setting) error {
+
+	fmt.Printf("Settings: %v\n", settings)
 	f.startWrite(http2FrameSettings, 0, 0)
 	for _, s := range settings {
 		f.writeUint16(uint16(s.ID))
@@ -2703,7 +2705,6 @@ func (mh *http2MetaHeadersFrame) checkPseudos() error {
 			}
 		}
 	}
-	fmt.Println("Done Checking pseudo headers")
 
 	if isRequest && isResponse {
 		return http2errMixPseudoHeaderTypes
@@ -3138,7 +3139,7 @@ const (
 	http2NextProtoTLS = "h2"
 
 	// http://http2.github.io/http2-spec/#SettingValues
-	http2initialHeaderTableSize = 4096
+	http2initialHeaderTableSize = 65536
 
 	http2initialWindowSize = 65535 // 6.9.2 Initial Flow Control Window Size
 
@@ -6549,7 +6550,7 @@ const (
 	// transportDefaultStreamFlow is how many stream-level flow
 	// control tokens we announce to the peer, and how many bytes
 	// we buffer per stream.
-	http2transportDefaultStreamFlow = 4 << 20
+	http2transportDefaultStreamFlow = 6291456 // 4 << 20
 
 	// transportDefaultStreamMinRefresh is the minimum number of bytes we'll send
 	// a stream-level WINDOW_UPDATE for at a time.
@@ -6637,7 +6638,8 @@ type http2Transport struct {
 
 func (t *http2Transport) maxHeaderListSize() uint32 {
 	if t.MaxHeaderListSize == 0 {
-		return 10 << 20
+		// return 10 << 20
+		return 262144
 	}
 	if t.MaxHeaderListSize == 0xffffffff {
 		return 0
@@ -7191,8 +7193,10 @@ func (t *http2Transport) newClientConn(c net.Conn, singleUse bool) (*http2Client
 	}
 
 	initialSettings := []http2Setting{
-		{ID: http2SettingEnablePush, Val: 0},
+		{ID: http2SettingEnablePush, Val: 1},
 		{ID: http2SettingInitialWindowSize, Val: http2transportDefaultStreamFlow},
+		{ID: http2SettingHeaderTableSize, Val: http2initialHeaderTableSize},
+		{ID: http2SettingMaxConcurrentStreams, Val: cc.maxConcurrentStreams},
 	}
 	if max := t.maxHeaderListSize(); max != 0 {
 		initialSettings = append(initialSettings, http2Setting{ID: http2SettingMaxHeaderListSize, Val: max})
@@ -8058,7 +8062,6 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 				}
 			}
 		} else {
-			fmt.Println("No pheader defined")
 			f(":authority", host)
 			f(":method", m)
 			if req.Method != "CONNECT" {
@@ -8135,7 +8138,6 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 				if kv.values[0] == "" {
 					continue
 				}
-
 			} else if strings.EqualFold(kv.key, "accept-encoding") {
 				addGzipHeader = false
 			}
@@ -9388,7 +9390,6 @@ type http2writeSettings []http2Setting
 func (s http2writeSettings) staysWithinBuffer(max int) bool {
 	const settingSize = 6 // uint16 + uint32
 	return http2frameHeaderLen+settingSize*len(s) <= max
-
 }
 
 func (s http2writeSettings) writeFrame(ctx http2writeContext) error {

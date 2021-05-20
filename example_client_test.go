@@ -14,8 +14,9 @@ import (
 )
 
 // Basic http test with Header Order
-func TestExample(t *testing.T) {
+func testExample(t *testing.T) {
 	c := http.Client{}
+
 	req, err := http.NewRequest("GET", "https://httpbin.org/headers", strings.NewReader(""))
 	req.Header = http.Header{
 		"sec-ch-ua":                 {"\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"90\", \"Google Chrome\";v=\"90\""},
