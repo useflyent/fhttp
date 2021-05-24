@@ -29,7 +29,7 @@ SETTINGS_MAX_FRAME_SIZE = 16384
 SETTINGS_MAX_HEADER_LIST_SIZE = 10485760
 ```
 
-ENABLE_PUSH is actually implemented, not just shown in client settings
+ENABLE_PUSH implementation was merged from [this pull request](https://go-review.googlesource.com/c/net/+/181497/)
 
 ## gzip, deflate, br encoding (TODO)
 Actually supports and implements encoding `gzip, deflate, br`

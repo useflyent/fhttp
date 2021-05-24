@@ -13,11 +13,34 @@ import (
 	http "github.com/zMrKrabz/fhttp"
 )
 
-// Basic http test with Header Order
-func testExample(t *testing.T) {
+type testPushHandlerPushReadResponse struct {
+	promise *http.Request
+	origReqURL *url.URL
+	origReqHeader http.Header
+	push *http.Response
+	pushErr error
+	done chan struct{}
+}
+
+func (ph *testPushHandlerPushReadResponse) HandlePush (r *http.Http2PushedRequest) {
+	ph.promise = r.Promise
+	ph.origReqURL = r.OriginalRequestURL
+	ph.origReqHeader = r.OriginalRequestHeader
+	ph.push, ph.pushErr = r.ReadResponse(r.Promise.Context())
+	close(ph.done)
+}
+
+// Basic http test with Header Order + enable push
+func TestExample(t *testing.T) {
 	c := http.Client{}
 
 	req, err := http.NewRequest("GET", "https://httpbin.org/headers", strings.NewReader(""))
+
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
 	req.Header = http.Header{
 		"sec-ch-ua":                 {"\" Not A;Brand\";v=\"99\", \"Chromium\";v=\"90\", \"Google Chrome\";v=\"90\""},
 		"sec-ch-ua-mobile":          {"?0"},
@@ -43,14 +66,11 @@ func testExample(t *testing.T) {
 		},
 	}
 
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
 	resp, err := c.Do(req)
 
 	if err != nil {
 		t.Errorf(err.Error())
+		return
 	}
 	defer resp.Body.Close()
 
@@ -90,20 +110,28 @@ func TestWithCert(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	client := http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: caCertPool,
-			},
-			Proxy:             http.ProxyURL(proxyURL),
-			ForceAttemptHTTP2: true,
+	h1t := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: caCertPool,
 		},
+		Proxy: http.ProxyURL(proxyURL),
+		ForceAttemptHTTP2: true,
+	}
+
+	h2t := &http.Http2Transport{
+		PushHandler: &testPushHandlerPushReadResponse{},
+		T1: h1t,
+	}
+
+	client := http.Client{
+		Transport: h2t,
 	}
 
 	req, err := http.NewRequest("GET", "https://httpbin.org/headers", strings.NewReader(""))
 
 	if err != nil {
 		t.Errorf(err.Error())
+		return
 	}
 
 	req.Header = http.Header{
@@ -139,6 +167,7 @@ func TestWithCert(t *testing.T) {
 
 	if err != nil {
 		t.Errorf(err.Error())
+		return
 	}
 	defer resp.Body.Close()
 
