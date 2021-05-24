@@ -316,7 +316,7 @@ func knownRoundTripperImpl(rt RoundTripper, req *Request) bool {
 			return knownRoundTripperImpl(altRT, req)
 		}
 		return true
-	case *http2Transport, http2noDialH2RoundTripper:
+	case *Http2Transport, http2noDialH2RoundTripper:
 		return true
 	}
 	// There's a very minor chance of a false positive with this.
