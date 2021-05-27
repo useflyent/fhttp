@@ -136,7 +136,7 @@ func TestPostRequestFormat(t *testing.T) {
 	client := &Client{Transport: tr}
 
 	url := "http://dummy.faketld/"
-	json := `{"key":"value"}`
+	json := `{"Key":"value"}`
 	b := strings.NewReader(json)
 	client.Post(url, "application/json", b) // Note: doesn't hit network
 

@@ -281,7 +281,7 @@ func (t *transferWriter) writeHeader(w io.Writer, trace *httptrace.ClientTrace) 
 		}
 	}
 
-	// Write Content-Length and/or Transfer-Encoding whose values are a
+	// Write Content-Length and/or Transfer-Encoding whose Values are a
 	// function of the sanitized field triple (Body, ContentLength,
 	// TransferEncoding)
 	if t.shouldSendContentLength() {
@@ -310,7 +310,7 @@ func (t *transferWriter) writeHeader(w io.Writer, trace *httptrace.ClientTrace) 
 			k = CanonicalHeaderKey(k)
 			switch k {
 			case "Transfer-Encoding", "Trailer", "Content-Length":
-				return badStringError("invalid Trailer key", k)
+				return badStringError("invalid Trailer Key", k)
 			}
 			keys = append(keys, k)
 		}
@@ -787,7 +787,7 @@ func fixTrailer(header Header, chunked bool) (Header, error) {
 			switch key {
 			case "Transfer-Encoding", "Trailer", "Content-Length":
 				if err == nil {
-					err = badStringError("bad trailer key", key)
+					err = badStringError("bad trailer Key", key)
 					return
 				}
 			}

@@ -89,7 +89,7 @@ const DefaultMaxIdleConnsPerHost = 2
 // Request.GetBody defined. HTTP requests are considered idempotent if
 // they have HTTP methods GET, HEAD, OPTIONS, or TRACE; or if their
 // Header map contains an "Idempotency-Key" or "X-Idempotency-Key"
-// entry. If the idempotency key value is a zero-length slice, the
+// entry. If the idempotency Key value is a zero-length slice, the
 // request is treated as idempotent but the header is not sent on the
 // wire.
 type Transport struct {
@@ -103,7 +103,7 @@ type Transport struct {
 	reqCanceler map[cancelKey]func(error)
 
 	altMu    sync.Mutex   // guards changing altProto only
-	altProto atomic.Value // of nil or map[string]RoundTripper, key is URI scheme
+	altProto atomic.Value // of nil or map[string]RoundTripper, Key is URI scheme
 
 	connsPerHostMu   sync.Mutex
 	connsPerHost     map[connectMethodKey]int
@@ -230,7 +230,7 @@ type Transport struct {
 	// alternate protocol (such as HTTP/2) after a TLS ALPN
 	// protocol negotiation. If Transport dials an TLS connection
 	// with a non-empty protocol name and TLSNextProto contains a
-	// map entry for that key (such as "h2"), then the func is
+	// map entry for that Key (such as "h2"), then the func is
 	// called with the request's authority (such as "example.com"
 	// or "example.com:1234") and the TLS connection. The function
 	// must return a RoundTripper that then handles the request.
@@ -283,7 +283,7 @@ type Transport struct {
 	ForceAttemptHTTP2 bool
 }
 
-// A cancelKey is the key of the reqCanceler map.
+// A cancelKey is the Key of the reqCanceler map.
 // We wrap the *Request in this type since we want to use the original request,
 // not any transient one created by roundTrip.
 type cancelKey struct {
@@ -425,7 +425,7 @@ func (t *Transport) onceSetNextProtoDefaults() {
 // thereof). HTTPS_PROXY takes precedence over HTTP_PROXY for https
 // requests.
 //
-// The environment values may be either a complete URL or a
+// The environment Values may be either a complete URL or a
 // "host[:port]", in which case the "http" scheme is assumed.
 // An error is returned if the value is a different form.
 //
@@ -530,7 +530,7 @@ func (t *Transport) roundTrip(req *Request) (*Response, error) {
 			for _, v := range vv {
 				if !httpguts.ValidHeaderFieldValue(v) {
 					req.closeBody()
-					return nil, fmt.Errorf("net/http: invalid header field value %q for key %v", v, k)
+					return nil, fmt.Errorf("net/http: invalid header field value %q for Key %v", v, k)
 				}
 			}
 		}
@@ -854,7 +854,7 @@ func (cm *connectMethod) proxyAuth() string {
 	return ""
 }
 
-// error values for debugging and testing, not seen by users.
+// error Values for debugging and testing, not seen by users.
 var (
 	errKeepAlivesDisabled = errors.New("http: putIdleConn: keep alives disabled")
 	errConnBroken         = errors.New("http: putIdleConn: connection is in bad state")
@@ -1186,7 +1186,7 @@ func (t *Transport) dial(ctx context.Context, network, addr string) (net.Conn, e
 // wantConn to coordinate and agree about the winning outcome.
 type wantConn struct {
 	cm    connectMethod
-	key   connectMethodKey // cm.key()
+	key   connectMethodKey // cm.Key()
 	ctx   context.Context  // context for dial
 	ready chan struct{}    // closed when pc, err pair is delivered
 
@@ -1441,8 +1441,8 @@ func (t *Transport) queueForDial(w *wantConn) {
 }
 
 // dialConnFor dials on behalf of w and delivers the result to w.
-// dialConnFor has received permission to dial w.cm and is counted in t.connCount[w.cm.key()].
-// If the dial is cancelled or unsuccessful, dialConnFor decrements t.connCount[w.cm.key()].
+// dialConnFor has received permission to dial w.cm and is counted in t.connCount[w.cm.Key()].
+// If the dial is cancelled or unsuccessful, dialConnFor decrements t.connCount[w.cm.Key()].
 func (t *Transport) dialConnFor(w *wantConn) {
 	defer w.afterDial()
 
@@ -1459,7 +1459,7 @@ func (t *Transport) dialConnFor(w *wantConn) {
 	}
 }
 
-// decConnsPerHost decrements the per-host connection count for key,
+// decConnsPerHost decrements the per-host connection count for Key,
 // which may in turn give a different waiting goroutine permission to dial.
 func (t *Transport) decConnsPerHost(key connectMethodKey) {
 	if t.MaxConnsPerHost <= 0 {
@@ -1802,7 +1802,7 @@ type connectMethod struct {
 	targetScheme string   // "http" or "https"
 	// If proxyURL specifies an http or https proxy, and targetScheme is http (not https),
 	// then targetAddr is not included in the connect method key, because the socket can
-	// be reused for different targetAddr values.
+	// be reused for different targetAddr Values.
 	targetAddr string
 	onlyH1     bool // whether to disable HTTP/2 and force HTTP/1
 }
@@ -1850,7 +1850,7 @@ func (cm *connectMethod) tlsHost() string {
 	return h
 }
 
-// connectMethodKey is the map key version of connectMethod, with a
+// connectMethodKey is the map Key version of connectMethod, with a
 // stringified proxy URL (or the empty string) instead of a pointer to
 // a URL.
 type connectMethodKey struct {
@@ -2667,7 +2667,7 @@ func (pc *persistConn) roundTrip(req *transportRequest) (resp *Response, err err
 	}
 }
 
-// tLogKey is a context WithValue key for test debugging contexts containing
+// tLogKey is a context WithValue Key for test debugging contexts containing
 // a t.Logf func. See export_test.go's Request.WithT method.
 type tLogKey struct{}
 

@@ -1501,6 +1501,13 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 	// continue to reuse the hpack encoder for future requests)
 	for k, vv := range req.Header {
 		if !httpguts.ValidHeaderFieldName(k) {
+
+			// If the header is magic key, the headers would have been ordered
+			// by this step. It is ok to delete and not raise an error
+			if k == http.HeaderOrderKey || k == http.PHeaderOrderKey {
+				continue
+			}
+
 			return nil, fmt.Errorf("invalid HTTP header name %q", k)
 		}
 		for _, v := range vv {
@@ -1516,52 +1523,81 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 		// target URI (the path-absolute production and optionally a '?' character
 		// followed by the query production (see Sections 3.3 and 3.4 of
 		// [RFC3986]).
-		f(":authority", host)
+
+		pHeaderOrder, ok := req.Header[http.PHeaderOrderKey]
 		m := req.Method
 		if m == "" {
 			m = http.MethodGet
 		}
-		f(":method", m)
-		if req.Method != "CONNECT" {
-			f(":path", path)
-			f(":scheme", req.URL.Scheme)
+		if ok {
+			// follow based on pseudo header order
+			for _, p := range pHeaderOrder {
+				switch p {
+				case ":authority":
+					f(":authority", host)
+				case ":method":
+					f(":method", req.Method)
+				case ":path":
+					if req.Method != "CONNECT" {
+						f(":path", path)
+					}
+				case ":scheme":
+					if req.Method != "CONNECT" {
+						f(":scheme", req.URL.Scheme)
+					}
+
+				// (zMrKrabz): Currently skips over unrecognized pheader fields,
+				// should throw error or something but works for now.
+				default:
+					continue
+				}
+			}
+		} else {
+			f(":authority", host)
+			f(":method", m)
+			if req.Method != "CONNECT" {
+				f(":path", path)
+				f(":scheme", req.URL.Scheme)
+			}
 		}
 		if trailers != "" {
 			f("trailer", trailers)
 		}
 
+		// Formats and writes headers with f function
 		var didUA bool
-		for k, vv := range req.Header {
-			if strings.EqualFold(k, "host") || strings.EqualFold(k, "content-length") {
+		var kvs []http.HeaderKeyValues
+
+		if headerOrder, ok := req.Header[http.HeaderOrderKey]; ok {
+			order := make(map[string]int)
+			for i, v := range headerOrder {
+				order[v] = i
+			}
+
+			kvs, _ = req.Header.SortedKeyValuesBy(order, make(map[string]bool))
+		} else {
+			kvs, _ = req.Header.SortedKeyValues(make(map[string]bool))
+		}
+
+		for _, kv := range kvs {
+
+			if strings.EqualFold(kv.Key, "host") || strings.EqualFold(kv.Key, "content-length") {
 				// Host is :authority, already sent.
 				// Content-Length is automatic, set below.
 				continue
-			} else if strings.EqualFold(k, "connection") || strings.EqualFold(k, "proxy-connection") ||
-				strings.EqualFold(k, "transfer-encoding") || strings.EqualFold(k, "upgrade") ||
-				strings.EqualFold(k, "keep-alive") {
+			} else if strings.EqualFold(kv.Key, "connection") || strings.EqualFold(kv.Key, "proxy-connection") ||
+				strings.EqualFold(kv.Key, "transfer-encoding") || strings.EqualFold(kv.Key, "upgrade") ||
+				strings.EqualFold(kv.Key, "keep-alive") {
 				// Per 8.1.2.2 Connection-Specific Header
 				// Fields, don't send connection-specific
 				// fields. We have already checked if any
 				// are error-worthy so just ignore the rest.
 				continue
-			} else if strings.EqualFold(k, "user-agent") {
-				// Match Go's http1 behavior: at most one
-				// User-Agent. If set to nil or empty string,
-				// then omit it. Otherwise if not mentioned,
-				// include the default (below).
-				didUA = true
-				if len(vv) < 1 {
-					continue
-				}
-				vv = vv[:1]
-				if vv[0] == "" {
-					continue
-				}
-			} else if strings.EqualFold(k, "cookie") {
+			} else if strings.EqualFold(kv.Key, "cookie") {
 				// Per 8.1.2.5 To allow for better compression efficiency, the
 				// Cookie header field MAY be split into separate header fields,
 				// each with one or more cookie-pairs.
-				for _, v := range vv {
+				for _, v := range kv.Values {
 					for {
 						p := strings.IndexByte(v, ';')
 						if p < 0 {
@@ -1580,18 +1616,37 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 					}
 				}
 				continue
+			} else if strings.EqualFold(kv.Key, "user-agent") {
+				// Match Go's http1 behavior: at most one
+				// User-Agent. If set to nil or empty string,
+				// then omit it. Otherwise if not mentioned,
+				// include the default (below).
+				didUA = true
+				if len(kv.Values) > 1 {
+					kv.Values = kv.Values[:1]
+				}
+
+				if kv.Values[0] == "" {
+					continue
+				}
+			} else if strings.EqualFold(kv.Key, "accept-encoding") {
+				addGzipHeader = false
 			}
 
-			for _, v := range vv {
-				f(k, v)
+			for _, v := range kv.Values {
+				f(kv.Key, v)
 			}
 		}
+
 		if shouldSendReqContentLength(req.Method, contentLength) {
 			f("content-length", strconv.FormatInt(contentLength, 10))
 		}
+
+		// Does not include accept-encoding header if its defined in req.Header
 		if addGzipHeader {
 			f("accept-encoding", "gzip")
 		}
+
 		if !didUA {
 			f("user-agent", defaultUserAgent)
 		}
@@ -1616,6 +1671,11 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 
 	// Header list size is ok. Write the headers.
 	enumerateHeaders(func(name, value string) {
+		// skips over writing magic key headers
+		if name == http.PHeaderOrderKey || name == http.HeaderOrderKey {
+			return
+		}
+
 		name = strings.ToLower(name)
 		cc.writeHeader(name, value)
 		if traceHeaders {

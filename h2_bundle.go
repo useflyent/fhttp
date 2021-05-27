@@ -402,7 +402,7 @@ const (
 // https://tools.ietf.org/html/rfc7540#appendix-A
 // Reject cipher suites from Appendix A.
 // "This list includes those cipher suites that do not
-// offer an ephemeral key exchange and those that are
+// offer an ephemeral Key exchange and those that are
 // based on the TLS null, stream or block cipher type"
 func http2isBadCipher(cipher uint16) bool {
 	switch cipher {
@@ -713,7 +713,7 @@ type http2clientConnPool struct {
 	mu sync.Mutex // TODO: maybe switch to RWMutex
 	// TODO: add support for sharing conns based on cert names
 	// (e.g. share conn for googleapis.com and appspot.com)
-	conns        map[string][]*http2ClientConn // key is host:port
+	conns        map[string][]*http2ClientConn // Key is host:port
 	dialing      map[string]*http2dialCall     // currently in-flight dials
 	keys         map[*http2ClientConn][]string
 	addConnCalls map[string]*http2addConnCall // in-flight addConnIfNeede calls
@@ -819,8 +819,8 @@ func (c *http2dialCall) dial(addr string) {
 	c.p.mu.Unlock()
 }
 
-// addConnIfNeeded makes a NewClientConn out of c if a connection for key doesn't
-// already exist. It coalesces concurrent calls with the same key.
+// addConnIfNeeded makes a NewClientConn out of c if a connection for Key doesn't
+// already exist. It coalesces concurrent calls with the same Key.
 // This is used by the http1 Transport code when it creates a new connection. Because
 // the http1 Transport doesn't de-dup TCP dials to outbound hosts (because it doesn't know
 // the protocol), it can get into a situation where it has multiple TLS connections.
@@ -2698,7 +2698,7 @@ type http2MetaHeadersFrame struct {
 	//
 	// Fields are guaranteed to be in the correct http2 order and
 	// not have unknown pseudo header fields or invalid header
-	// field names or values. Required pseudo header fields may be
+	// field names or Values. Required pseudo header fields may be
 	// missing, however. Use the MetaHeadersFrame.Pseudo accessor
 	// method to access pseudo headers.
 	Fields []hpack.HeaderField
@@ -2788,7 +2788,7 @@ type http2MetaPushPromiseFrame struct {
 	//
 	// Fields are guaranteed to be in the correct http2 order and
 	// not have unknown pseudo header fields or invalid header
-	// field names or values. Required pseudo header fields may be
+	// field names or Values. Required pseudo header fields may be
 	// missing, however. Use the MetaPushPromiseFrame.Pseudo accessor
 	// method to access pseudo headers.
 	Fields []hpack.HeaderField
@@ -2845,7 +2845,7 @@ func (fr *http2Framer) maxHeaderStringLen() int {
 }
 
 // readMetaFrame returns 0 or more CONTINUATION frames from fr and
-// merges them into a Frame with the decoded hpack values
+// merges them into a Frame with the decoded hpack Values
 func (fr *http2Framer) readMetaFrame(cont http2headersOrContinuation) (http2Frame, error) {
 	if fr.AllowIllegalReads {
 		return nil, errors.New("illegal use of AllowIllegalReads with ReadMetaHeaders")
@@ -3055,7 +3055,7 @@ func http2pushedRequestToHTTPRequest(mppf *http2MetaPushPromiseFrame) (*Request,
 	authority := mppf.PseudoValue("authority")
 	path := mppf.PseudoValue("path")
 
-	// Check to make sure all pseudo header values are non empty
+	// Check to make sure all pseudo header Values are non empty
 	if method == "" {
 		return nil, http2ErrMissingHeaderMethod
 	}
@@ -3098,11 +3098,11 @@ func http2pushedRequestToHTTPRequest(mppf *http2MetaPushPromiseFrame) (*Request,
 	reqURL.Host = authority
 	reqURL.Scheme = scheme
 	return &Request{
-		Method: method,
-		Proto: "HTTP/2.0",
+		Method:     method,
+		Proto:      "HTTP/2.0",
 		ProtoMajor: 2,
-		URL: reqURL,
-		Header: headers,
+		URL:        reqURL,
+		Header:     headers,
 	}, nil
 }
 
@@ -3510,7 +3510,7 @@ func (s http2SettingID) String() string {
 }
 
 // validWireHeaderFieldName reports whether v is a valid header field
-// name (key). See httpguts.ValidHeaderName for the base rules.
+// name (Key). See httpguts.ValidHeaderName for the base rules.
 //
 // Further, http2 says:
 //   "Just as in HTTP/1.x, header field names are strings of ASCII
@@ -4001,7 +4001,7 @@ func (s *http2Server) maxConcurrentStreams() uint32 {
 // the connection is closed to prevent memory exhaustion attacks.
 func (s *http2Server) maxQueuedControlFrames() int {
 	// TODO: if anybody asks, add a Server field, and remember to define the
-	// behavior of negative values.
+	// behavior of negative Values.
 	return http2maxQueuedControlFrames
 }
 
@@ -4144,7 +4144,7 @@ type http2ServeConnOpts struct {
 	Context context.Context
 
 	// BaseConfig optionally sets the base configuration
-	// for values. If nil, defaults are used.
+	// for Values. If nil, defaults are used.
 	BaseConfig *Server
 
 	// Handler specifies which handler to use for processing
@@ -4192,7 +4192,7 @@ func (o *http2ServeConnOpts) handler() Handler {
 // ServeConn does not support h2c by itself. Any h2c support must be
 // implemented in terms of providing a suitably-behaving net.Conn.
 //
-// The opts parameter is optional. If nil, default values are used.
+// The opts parameter is optional. If nil, default Values are used.
 func (s *http2Server) ServeConn(c net.Conn, opts *http2ServeConnOpts) {
 	baseCtx, cancel := http2serverConnBaseContext(c, opts)
 	defer cancel()
@@ -4767,7 +4767,7 @@ func (sc *http2serverConn) awaitGracefulShutdown(sharedCh <-chan struct{}, priva
 
 type http2serverMessage int
 
-// Message values sent to serveMsgCh.
+// Message Values sent to serveMsgCh.
 var (
 	http2settingsTimerMsg    = new(http2serverMessage)
 	http2idleTimerMsg        = new(http2serverMessage)
@@ -6344,7 +6344,7 @@ func (rws *http2responseWriterState) writeChunk(p []byte) (n int, err error) {
 // TrailerPrefix is a magic prefix for ResponseWriter.Header map keys
 // that, if present, signals that the map entry is actually for
 // the response trailers, and not the response headers. The prefix
-// is stripped after the ServeHTTP call finishes and the values are
+// is stripped after the ServeHTTP call finishes and the Values are
 // sent in the trailers.
 //
 // This mechanism is intended only for trailers that are not known
@@ -6369,8 +6369,8 @@ const http2TrailerPrefix = "Trailer:"
 // user of Trailers in the wild: gRPC (using them only over http2),
 // and gRPC libraries permit setting trailers mid-stream without
 // predeclaring them. So: change of plans. We still permit the old
-// way, but we also permit this hack: if a Header() key begins with
-// "Trailer:", the suffix of that key is a Trailer. Because ':' is an
+// way, but we also permit this hack: if a Header() Key begins with
+// "Trailer:", the suffix of that Key is a Trailer. Because ':' is an
 // invalid token byte anyway, there is no ambiguity. (And it's already
 // filtered out) It's mildly hacky, but not terrible.
 //
@@ -7029,12 +7029,12 @@ func (t *Http2Transport) initConnPool() {
 // ClientConn is the state of a single HTTP/2 client connection to an
 // HTTP/2 server.
 type http2ClientConn struct {
-	t         *Http2Transport
-	tconn     net.Conn             // usually *tls.Conn, except specialized impls
-	dialedAddr string // addr dialed to create tconn; not set with NewClientConnection
-	tlsState  *tls.ConnectionState // nil only for specialized impls
-	reused    uint32               // whether conn is being reused; atomic
-	singleUse bool                 // whether being used for a single http.Request
+	t          *Http2Transport
+	tconn      net.Conn             // usually *tls.Conn, except specialized impls
+	dialedAddr string               // addr dialed to create tconn; not set with NewClientConnection
+	tlsState   *tls.ConnectionState // nil only for specialized impls
+	reused     uint32               // whether conn is being reused; atomic
+	singleUse  bool                 // whether being used for a single http.Request
 
 	// readLoop goroutine fields:
 	readerDone chan struct{} // closed on error
@@ -7043,25 +7043,25 @@ type http2ClientConn struct {
 	idleTimeout time.Duration // or 0 for never
 	idleTimer   *time.Timer
 
-	mu              sync.Mutex // guards following
-	cond            *sync.Cond // hold mu; broadcast on flow/closed changes
-	flow            http2flow  // our conn-level flow control quota (cs.flow is per stream)
-	inflow          http2flow  // peer's conn-level flow control
-	closing         bool
-	closed          bool
-	wantSettingsAck bool                          // we sent a SETTINGS frame and haven't heard back
-	goAway          *http2GoAwayFrame             // if non-nil, the GoAwayFrame we received
-	goAwayDebug     string                        // goAway frame's debug data, retained as a string
-	streams         map[uint32]*http2clientStream // client-initiated
-	nextStreamID    uint32
-	highestPromiseID uint32 // highest promise id so far received from server
-	pendingRequests int                       // requests blocked and waiting to be sent because len(streams) == maxConcurrentStreams
-	pings           map[[8]byte]chan struct{} // in flight ping data to notification channel
-	bw              *bufio.Writer
-	br              *bufio.Reader
-	fr              *http2Framer
-	lastActive      time.Time
-	lastIdle        time.Time // time last idle
+	mu               sync.Mutex // guards following
+	cond             *sync.Cond // hold mu; broadcast on flow/closed changes
+	flow             http2flow  // our conn-level flow control quota (cs.flow is per stream)
+	inflow           http2flow  // peer's conn-level flow control
+	closing          bool
+	closed           bool
+	wantSettingsAck  bool                          // we sent a SETTINGS frame and haven't heard back
+	goAway           *http2GoAwayFrame             // if non-nil, the GoAwayFrame we received
+	goAwayDebug      string                        // goAway frame's debug data, retained as a string
+	streams          map[uint32]*http2clientStream // client-initiated
+	nextStreamID     uint32
+	highestPromiseID uint32                    // highest promise id so far received from server
+	pendingRequests  int                       // requests blocked and waiting to be sent because len(streams) == maxConcurrentStreams
+	pings            map[[8]byte]chan struct{} // in flight ping data to notification channel
+	bw               *bufio.Writer
+	br               *bufio.Reader
+	fr               *http2Framer
+	lastActive       time.Time
+	lastIdle         time.Time // time last idle
 	// Settings from peer: (also guarded by mu)
 	maxFrameSize          uint32
 	maxConcurrentStreams  uint32
@@ -7105,7 +7105,7 @@ type http2clientStream struct {
 	firstByte    bool  // got the first response byte
 	pastHeaders  bool  // got first MetaHeadersFrame (actual headers)
 	pastTrailers bool  // got optional second MetaHeadersFrame (trailers)
-	gotEndStream bool // got frame with END_STREAM flag set
+	gotEndStream bool  // got frame with END_STREAM flag set
 	num1xx       uint8 // number of 1xx responses seen
 
 	trailer    Header  // accumulated trailers
@@ -7247,7 +7247,7 @@ func (t *Http2Transport) RoundTrip(req *Request) (*Response, error) {
 
 // authorityHostPort returns a given authority (a host/IP, or host:port / ip:port)
 // and returns a host and port
-func http2authorityHostPort(scheme string, authority string) (host,port string) {
+func http2authorityHostPort(scheme string, authority string) (host, port string) {
 	host, port, err := net.SplitHostPort(authority)
 	if err != nil { // authority doesn't have a port
 		port = "433"
@@ -7464,7 +7464,7 @@ func (t *Http2Transport) newClientConn(c net.Conn, addr string, singleUse bool) 
 	cc := &http2ClientConn{
 		t:                     t,
 		tconn:                 c,
-		dialedAddr: addr,
+		dialedAddr:            addr,
 		readerDone:            make(chan struct{}),
 		nextStreamID:          1,
 		maxFrameSize:          16 << 10,           // spec default
@@ -7519,7 +7519,7 @@ func (t *Http2Transport) newClientConn(c net.Conn, addr string, singleUse bool) 
 		pushEnabled = 1
 	}
 	fmt.Printf("Push Enabled: %v", pushEnabled)
-	initialSettings = append(initialSettings,http2Setting{ID: http2SettingEnablePush, Val: pushEnabled})
+	initialSettings = append(initialSettings, http2Setting{ID: http2SettingEnablePush, Val: pushEnabled})
 	if max := t.maxHeaderListSize(); max != 0 {
 		initialSettings = append(initialSettings, http2Setting{ID: http2SettingMaxHeaderListSize, Val: max})
 	}
@@ -7805,7 +7805,7 @@ func http2commaSeparatedTrailers(req *Request) (string, error) {
 		k = CanonicalHeaderKey(k)
 		switch k {
 		case "Transfer-Encoding", "Trailer", "Content-Length":
-			return "", fmt.Errorf("invalid Trailer key %q", k)
+			return "", fmt.Errorf("invalid Trailer Key %q", k)
 		}
 		keys = append(keys, k)
 	}
@@ -8107,7 +8107,7 @@ func (cc *http2ClientConn) writeHeaders(streamID uint32, endStream bool, maxFram
 	return cc.werr
 }
 
-func (cc *http2ClientConn) requestGzip(req *Request) (bool) {
+func (cc *http2ClientConn) requestGzip(req *Request) bool {
 	// TODO(bradfitz): this is a copy of the logic in net/http. Unify somewhere?
 	if !cc.t.disableCompression() &&
 		req.Header.Get("Accept-Encoding") == "" &&
@@ -8130,7 +8130,7 @@ func (cc *http2ClientConn) requestGzip(req *Request) (bool) {
 	return false
 }
 
-// internal error values; they don't escape to callers
+// internal error Values; they don't escape to callers
 var (
 	// abort request body write; don't send cancel
 	http2errStopReqBodyWrite = errors.New("http2: aborting request body write")
@@ -8337,7 +8337,7 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 	for k, vv := range req.Header {
 		if !httpguts.ValidHeaderFieldName(k) {
 
-			// If the header is magic key, the headers would have been ordered
+			// If the header is magic Key, the headers would have been ordered
 			// by this step. It is ok to delete and not raise an error
 			if k == HeaderOrderKey || k == PHeaderOrderKey {
 				continue
@@ -8401,7 +8401,7 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 
 		// Formats and writes headers with f function
 		var didUA bool
-		var kvs []keyValues
+		var kvs []HeaderKeyValues
 
 		if headerOrder, ok := req.Header[HeaderOrderKey]; ok {
 			order := make(map[string]int)
@@ -8409,30 +8409,30 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 				order[v] = i
 			}
 
-			kvs, _ = req.Header.sortedKeyValuesBy(order, make(map[string]bool))
+			kvs, _ = req.Header.SortedKeyValuesBy(order, make(map[string]bool))
 		} else {
-			kvs, _ = req.Header.sortedKeyValues(make(map[string]bool))
+			kvs, _ = req.Header.SortedKeyValues(make(map[string]bool))
 		}
 
 		for _, kv := range kvs {
 
-			if strings.EqualFold(kv.key, "host") || strings.EqualFold(kv.key, "content-length") {
+			if strings.EqualFold(kv.Key, "host") || strings.EqualFold(kv.Key, "content-length") {
 				// Host is :authority, already sent.
 				// Content-Length is automatic, set below.
 				continue
-			} else if strings.EqualFold(kv.key, "connection") || strings.EqualFold(kv.key, "proxy-connection") ||
-				strings.EqualFold(kv.key, "transfer-encoding") || strings.EqualFold(kv.key, "upgrade") ||
-				strings.EqualFold(kv.key, "keep-alive") {
+			} else if strings.EqualFold(kv.Key, "connection") || strings.EqualFold(kv.Key, "proxy-connection") ||
+				strings.EqualFold(kv.Key, "transfer-encoding") || strings.EqualFold(kv.Key, "upgrade") ||
+				strings.EqualFold(kv.Key, "keep-alive") {
 				// Per 8.1.2.2 Connection-Specific Header
 				// Fields, don't send connection-specific
 				// fields. We have already checked if any
 				// are error-worthy so just ignore the rest.
 				continue
-			} else if strings.EqualFold(kv.key, "cookie") {
+			} else if strings.EqualFold(kv.Key, "cookie") {
 				// Per 8.1.2.5 To allow for better compression efficiency, the
 				// Cookie header field MAY be split into separate header fields,
 				// each with one or more cookie-pairs.
-				for _, v := range kv.values {
+				for _, v := range kv.Values {
 					for {
 						p := strings.IndexByte(v, ';')
 						if p < 0 {
@@ -8451,25 +8451,25 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 					}
 				}
 				continue
-			} else if strings.EqualFold(kv.key, "user-agent") {
+			} else if strings.EqualFold(kv.Key, "user-agent") {
 				// Match Go's http1 behavior: at most one
 				// User-Agent. If set to nil or empty string,
 				// then omit it. Otherwise if not mentioned,
 				// include the default (below).
 				didUA = true
-				if len(kv.values) > 1 {
-					kv.values = kv.values[:1]
+				if len(kv.Values) > 1 {
+					kv.Values = kv.Values[:1]
 				}
 
-				if kv.values[0] == "" {
+				if kv.Values[0] == "" {
 					continue
 				}
-			} else if strings.EqualFold(kv.key, "accept-encoding") {
+			} else if strings.EqualFold(kv.Key, "accept-encoding") {
 				addGzipHeader = false
 			}
 
-			for _, v := range kv.values {
-				f(kv.key, v)
+			for _, v := range kv.Values {
+				f(kv.Key, v)
 			}
 		}
 
@@ -8506,7 +8506,7 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 
 	// Header list size is ok. Write the headers.
 	enumerateHeaders(func(name, value string) {
-		// skips over writing magic key headers
+		// skips over writing magic Key headers
 		if name == PHeaderOrderKey || name == HeaderOrderKey {
 			return
 		}
@@ -8897,7 +8897,7 @@ func (rl *http2clientConnReadLoop) handleResponse(cs *http2clientStream, f *http
 		} else {
 			vv := header[key]
 			if vv == nil && len(strs) > 0 {
-				// More than likely this will be a single-element key.
+				// More than likely this will be a single-element Key.
 				// Most headers aren't multi-valued.
 				// Set the capacity on strs[0] to 1, so any future append
 				// won't extend the slice into the other strings.
@@ -9106,8 +9106,8 @@ func (rl *http2clientConnReadLoop) processData(f *http2DataFrame) error {
 		neverSent := cc.nextStreamID
 		cc.mu.Unlock()
 		// If server initiated, could be from push cancel. Just ignore it
-		serverInitiated := f.StreamID % 2 == 0
-		if f.StreamID >= neverSent && !serverInitiated{
+		serverInitiated := f.StreamID%2 == 0
+		if f.StreamID >= neverSent && !serverInitiated {
 			// We never asked for this.
 			cc.logf("http2: Transport received unsolicited DATA frame; closing connection")
 			return http2ConnectionError(http2ErrCodeProtocol)
@@ -10338,7 +10338,7 @@ type http2PriorityWriteSchedulerConfig struct {
 	//   different from what is intended. To avoid these problems, an endpoint
 	//   SHOULD retain stream prioritization state for a period after streams
 	//   become closed. The longer state is retained, the lower the chance that
-	//   streams are assigned incorrect or default priority values."
+	//   streams are assigned incorrect or default priority Values."
 	MaxClosedNodesInTree int
 
 	// MaxIdleNodesInTree controls the maximum number of idle streams to

@@ -211,7 +211,7 @@ func ServeContent(w ResponseWriter, req *Request, name string, modtime time.Time
 var errSeeker = errors.New("seeker can't seek")
 
 // errNoOverlap is returned by serveContent's parseRange if first-byte-pos of
-// all of the byte-range-spec values is greater than the content size.
+// all of the byte-range-spec Values is greater than the content size.
 var errNoOverlap = errors.New("invalid range: failed to overlap")
 
 // if name is empty, filename is unknown. (used for mime type, before sniffing)
@@ -355,7 +355,7 @@ func scanETag(s string) (etag string, remain string) {
 	for i := start + 1; i < len(s); i++ {
 		c := s[i]
 		switch {
-		// Character values allowed in ETags.
+		// Character Values allowed in ETags.
 		case c == 0x21 || c >= 0x23 && c <= 0x7E || c >= 0x80:
 		case c == '"':
 			return s[:i+1], s[i+1:]
