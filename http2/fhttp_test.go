@@ -1,6 +1,8 @@
 package http2_test
 
 import (
+	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -41,4 +43,38 @@ func TestHeaderOrder(t *testing.T) {
 	if !eq {
 		t.Fatalf("Header order not set properly, \n Got %v \n Want: %v", hk, ":method :authority :scheme :path grind experience live accept-encoding user-agent")
 	}
+}
+
+// Tests if connection settings are written correctly
+func TestConnectionSettings(t *testing.T) {
+	settings := []http2.Setting{
+		{ID: http2.SettingHeaderTableSize, Val: 65536},
+		{ID: http2.SettingMaxConcurrentStreams, Val: 1000},
+		{ID: http2.SettingInitialWindowSize, Val: 6291456},
+		{ID: http2.SettingMaxFrameSize, Val: 16384},
+		{ID: http2.SettingMaxHeaderListSize, Val: 262144},
+	}
+	buf := new(bytes.Buffer)
+	fr := http2.NewFramer(buf, buf)
+	err := fr.WriteSettings(settings...)
+
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	f, err := fr.ReadFrame()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	// dec := hpack.NewDecoder(2048, nil)
+	// hf, err := dec.DecodeFull()
+	// if err != nil {
+	// 	t.Fatalf(err.Error())
+	// }
+
+	// for _, h := range hf {
+	// 	fmt.Printf("%s\n", h.Name+h.Value)
+	// }
+	fmt.Println(f)
 }
