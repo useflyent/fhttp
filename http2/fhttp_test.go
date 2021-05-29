@@ -2,6 +2,7 @@ package http2_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -45,6 +46,13 @@ func TestHeaderOrder(t *testing.T) {
 	}
 }
 
+func compareSettings(ID http2.SettingID, output uint32, expected uint32) error {
+	if output != expected {
+		return errors.New(fmt.Sprintf("Setting %v, expected %d got %d", ID, expected, output))
+	}
+	return nil
+}
+
 // Tests if connection settings are written correctly
 func TestConnectionSettings(t *testing.T) {
 	settings := []http2.Setting{
@@ -67,14 +75,30 @@ func TestConnectionSettings(t *testing.T) {
 		t.Fatal(err.Error())
 	}
 
-	// dec := hpack.NewDecoder(2048, nil)
-	// hf, err := dec.DecodeFull()
-	// if err != nil {
-	// 	t.Fatalf(err.Error())
-	// }
+	sf := f.(*http2.SettingsFrame)
+	n := sf.NumSettings()
+	if n != len(settings) {
+		t.Fatalf("Expected %d settings, got %d", len(settings), n)
+	}
 
-	// for _, h := range hf {
-	// 	fmt.Printf("%s\n", h.Name+h.Value)
-	// }
-	fmt.Println(f)
+	for i := 0; i < n; i++ {
+		s := sf.Setting(i)
+		var err error
+		switch s.ID {
+		case http2.SettingHeaderTableSize:
+			err = compareSettings(s.ID, s.Val, 65536)
+		case http2.SettingMaxConcurrentStreams:
+			err = compareSettings(s.ID, s.Val, 1000)
+		case http2.SettingInitialWindowSize:
+			err = compareSettings(s.ID, s.Val, 6291456)
+		case http2.SettingMaxFrameSize:
+			err = compareSettings(s.ID, s.Val, 16384)
+		case http2.SettingMaxHeaderListSize:
+			err = compareSettings(s.ID, s.Val, 262144)
+		}
+
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+	}
 }
