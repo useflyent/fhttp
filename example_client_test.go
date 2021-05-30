@@ -87,22 +87,29 @@ func TestExample(t *testing.T) {
 	}
 }
 
-// Test with Charles cert + proxy
-func TestWithCert(t *testing.T) {
+func getCert() (*x509.CertPool, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		t.Errorf(err.Error())
+		return nil, err
 	}
 	caCert, err := os.ReadFile(fmt.Sprintf("%v/charles_cert.pem", home))
 	if err != nil {
-		t.Errorf("Could not find charles cert, %v", err.Error())
-		return
+		return nil, err
 	}
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
+	certPool := x509.NewCertPool()
+	certPool.AppendCertsFromPEM(caCert)
+	return certPool, nil
+}
+
+// Test with Charles cert + proxy
+func TestWithCert(t *testing.T) {
+	caCertPool, err := getCert()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 	proxyURL, err := url.Parse("http://localhost:8888")
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	h1t := &http.Transport{
@@ -130,7 +137,7 @@ func TestWithCert(t *testing.T) {
 		Transport: h1t,
 	}
 
-	req, err := http.NewRequest("GET", "https://httpbin.org/headers", strings.NewReader(""))
+	req, err := http.NewRequest("GET", "https://httpbin.org/headers", nil)
 
 	if err != nil {
 		t.Errorf(err.Error())
@@ -181,6 +188,48 @@ func TestWithCert(t *testing.T) {
 	var data interface{}
 	if err = json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		t.Error(err.Error())
+	}
+}
+
+// Test with push handler
+func TestEnablePush(t *testing.T) {
+	caCertPool, err := getCert()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	proxyURL, err := url.Parse("http://localhost:8888")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	t1 := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: caCertPool,
+		},
+		Proxy:             http.ProxyURL(proxyURL),
+		ForceAttemptHTTP2: true,
+	}
+	t2, err := http2.ConfigureTransports(t1)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	t2.PushHandler = &testPushHandlerPushReadResponse{}
+	t1.H2transport = t2
+	c := &http.Client{
+		Transport: t1,
+	}
+	req, err := http.NewRequest("GET", "https://httpbin.org/headers", nil)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	_, err = c.Do(req)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	req, err = http.NewRequest("POST", "https://httpbin.org/post", nil)
+	_, err = c.Do(req)
+	if err != nil {
+		t.Fatalf(err.Error())
 	}
 }
 
