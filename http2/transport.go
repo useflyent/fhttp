@@ -727,15 +727,20 @@ func (t *Transport) newClientConn(c net.Conn, addr string, singleUse bool) (*Cli
 			if setting.ID == SettingMaxHeaderListSize {
 				setMaxHeader = true
 			}
+			if setting.ID == SettingInitialWindowSize {
+				setInitialWindowSize = true
+			}
 			initialSettings = append(initialSettings, setting)
 		}
 	}
+
 	if !setInitialWindowSize {
 		initialSettings = append(initialSettings, Setting{ID: SettingInitialWindowSize, Val: transportDefaultStreamFlow})
 	}
 	if max := t.maxHeaderListSize(); max != 0 && !setMaxHeader {
 		initialSettings = append(initialSettings, Setting{ID: SettingMaxHeaderListSize, Val: max})
 	}
+	fmt.Printf("Settings: %v\n", initialSettings)
 
 	cc.bw.Write(clientPreface)
 	cc.fr.WriteSettings(initialSettings...)
