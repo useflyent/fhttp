@@ -143,7 +143,7 @@ func (t *Transport) IdleConnStrsForTesting() []string {
 
 func (t *Transport) IdleConnStrsForTesting_h2() []string {
 	var ret []string
-	noDialPool := t.h2transport.(*http2Transport).ConnPool.(http2noDialClientConnPool)
+	noDialPool := t.H2transport.(*http2Transport).ConnPool.(http2noDialClientConnPool)
 	pool := noDialPool.http2clientConnPool
 
 	pool.mu.Lock()
@@ -258,7 +258,7 @@ func ExportHttp2ConfigureTransport(t *Transport) error {
 	if err != nil {
 		return err
 	}
-	t.h2transport = t2
+	t.H2transport = t2
 	return nil
 }
 

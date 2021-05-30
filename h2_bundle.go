@@ -6900,7 +6900,10 @@ type http2Transport struct {
 	connPoolOnce  sync.Once
 	connPoolOrDef http2ClientConnPool // non-nil version of ConnPool
 
-	Settings []http2Setting
+	// Settings should not include InitialWindowSize or HeaderTableSize, set that in Transport
+	Settings          []http2Setting
+	InitialWindowSize uint32 // if nil, will use global initialWindowSize
+	HeaderTableSize   uint32 // if nil, will use global initialHeaderTableSize
 }
 
 func (t *http2Transport) maxHeaderListSize() uint32 {
@@ -6947,6 +6950,7 @@ func http2configureTransports(t1 *Transport) (*http2Transport, error) {
 		ConnPool: http2noDialClientConnPool{connPool},
 		t1:       t1,
 	}
+
 	connPool.t = t2
 	if err := http2registerHTTPSProtocol(t1, http2noDialH2RoundTripper{t2}); err != nil {
 		return nil, err
@@ -6980,6 +6984,21 @@ func http2configureTransports(t1 *Transport) (*http2Transport, error) {
 		}
 	} else {
 		m["h2"] = upgradeFn
+	}
+
+	// Auto-configure the http2.Transport's MaxHeaderListSize from
+	// the http.Transport's MaxResponseHeaderBytes. They don't
+	// exactly mean the same thing, but they're close.
+	//
+	// TODO: also add this to x/net/http2.Configure Transport, behind
+	// a +build go1.7 build tag:
+	if limit1 := t1.MaxResponseHeaderBytes; limit1 != 0 && t2.MaxHeaderListSize == 0 {
+		const h2max = 1<<32 - 1
+		if limit1 >= h2max {
+			t2.MaxHeaderListSize = h2max
+		} else {
+			t2.MaxHeaderListSize = uint32(limit1)
+		}
 	}
 	return t2, nil
 }
@@ -7453,7 +7472,11 @@ func (t *http2Transport) newClientConn(c net.Conn, addr string, singleUse bool) 
 	cc.bw = bufio.NewWriter(http2stickyErrWriter{c, &cc.werr})
 	cc.br = bufio.NewReader(c)
 	cc.fr = http2NewFramer(cc.bw, cc.br)
-	cc.fr.ReadMetaHeaders = hpack.NewDecoder(http2initialHeaderTableSize, nil)
+	if t.HeaderTableSize != 0 {
+		cc.fr.ReadMetaHeaders = hpack.NewDecoder(t.HeaderTableSize, nil)
+	} else {
+		cc.fr.ReadMetaHeaders = hpack.NewDecoder(http2initialHeaderTableSize, nil)
+	}
 	cc.fr.MaxHeaderListSize = t.maxHeaderListSize()
 
 	// TODO: SetMaxDynamicTableSize, SetMaxDynamicTableSizeLimit on
@@ -7478,7 +7501,6 @@ func (t *http2Transport) newClientConn(c net.Conn, addr string, singleUse bool) 
 	initialSettings = append(initialSettings, http2Setting{ID: http2SettingEnablePush, Val: pushEnabled})
 
 	setMaxHeader := false
-	setInitialWindowSize := false
 	if t.Settings != nil {
 		for _, setting := range t.Settings {
 			if setting.ID == http2SettingMaxHeaderListSize {
@@ -7487,7 +7509,9 @@ func (t *http2Transport) newClientConn(c net.Conn, addr string, singleUse bool) 
 			initialSettings = append(initialSettings, setting)
 		}
 	}
-	if !setInitialWindowSize {
+	if t.InitialWindowSize != 0 {
+		initialSettings = append(initialSettings, http2Setting{ID: http2SettingInitialWindowSize, Val: t.InitialWindowSize})
+	} else {
 		initialSettings = append(initialSettings, http2Setting{ID: http2SettingInitialWindowSize, Val: http2transportDefaultStreamFlow})
 	}
 	if max := t.maxHeaderListSize(); max != 0 && !setMaxHeader {

@@ -144,7 +144,10 @@ type Transport struct {
 	connPoolOnce  sync.Once
 	connPoolOrDef ClientConnPool // non-nil version of ConnPool
 
-	Settings []Setting
+	// Settings should not include InitialWindowSize or HeaderTableSize, set that in Transport
+	Settings          []Setting
+	InitialWindowSize uint32 // if nil, will use global initialWindowSize
+	HeaderTableSize   uint32 // if nil, will use global initialHeaderTableSize
 }
 
 func (t *Transport) maxHeaderListSize() uint32 {
@@ -191,6 +194,7 @@ func configureTransports(t1 *http.Transport) (*Transport, error) {
 		ConnPool: noDialClientConnPool{connPool},
 		t1:       t1,
 	}
+
 	connPool.t = t2
 	if err := registerHTTPSProtocol(t1, noDialH2RoundTripper{t2}); err != nil {
 		return nil, err
@@ -224,6 +228,21 @@ func configureTransports(t1 *http.Transport) (*Transport, error) {
 		}
 	} else {
 		m["h2"] = upgradeFn
+	}
+
+	// Auto-configure the http2.Transport's MaxHeaderListSize from
+	// the http.Transport's MaxResponseHeaderBytes. They don't
+	// exactly mean the same thing, but they're close.
+	//
+	// TODO: also add this to x/net/http2.Configure Transport, behind
+	// a +build go1.7 build tag:
+	if limit1 := t1.MaxResponseHeaderBytes; limit1 != 0 && t2.MaxHeaderListSize == 0 {
+		const h2max = 1<<32 - 1
+		if limit1 >= h2max {
+			t2.MaxHeaderListSize = h2max
+		} else {
+			t2.MaxHeaderListSize = uint32(limit1)
+		}
 	}
 	return t2, nil
 }
@@ -537,9 +556,10 @@ func (t *Transport) CloseIdleConnections() {
 }
 
 var (
-	errClientConnClosed    = errors.New("http2: client conn is closed")
-	errClientConnUnusable  = errors.New("http2: client conn not usable")
-	errClientConnGotGoAway = errors.New("http2: Transport received Server's graceful shutdown GOAWAY")
+	errClientConnClosed               = errors.New("http2: client conn is closed")
+	errClientConnUnusable             = errors.New("http2: client conn not usable")
+	errClientConnGotGoAway            = errors.New("http2: Transport received Server's graceful shutdown GOAWAY")
+	errSettingsIncludeIllegalSettings = errors.New("http2: Settings contains either SettingInitialWindowSize or SettingHeaderTableSize, which should be specified in transport instead")
 )
 
 // shouldRetryRequest is called by RoundTrip when a request fails to get
@@ -696,7 +716,11 @@ func (t *Transport) newClientConn(c net.Conn, addr string, singleUse bool) (*Cli
 	cc.bw = bufio.NewWriter(stickyErrWriter{c, &cc.werr})
 	cc.br = bufio.NewReader(c)
 	cc.fr = NewFramer(cc.bw, cc.br)
-	cc.fr.ReadMetaHeaders = hpack.NewDecoder(initialHeaderTableSize, nil)
+	if t.HeaderTableSize != 0 {
+		cc.fr.ReadMetaHeaders = hpack.NewDecoder(t.HeaderTableSize, nil)
+	} else {
+		cc.fr.ReadMetaHeaders = hpack.NewDecoder(initialHeaderTableSize, nil)
+	}
 	cc.fr.MaxHeaderListSize = t.maxHeaderListSize()
 
 	// TODO: SetMaxDynamicTableSize, SetMaxDynamicTableSizeLimit on
@@ -721,26 +745,30 @@ func (t *Transport) newClientConn(c net.Conn, addr string, singleUse bool) (*Cli
 	initialSettings = append(initialSettings, Setting{ID: SettingEnablePush, Val: pushEnabled})
 
 	setMaxHeader := false
-	setInitialWindowSize := false
 	if t.Settings != nil {
 		for _, setting := range t.Settings {
 			if setting.ID == SettingMaxHeaderListSize {
 				setMaxHeader = true
 			}
-			if setting.ID == SettingInitialWindowSize {
-				setInitialWindowSize = true
+			if setting.ID == SettingHeaderTableSize || setting.ID == SettingInitialWindowSize {
+				return nil, errSettingsIncludeIllegalSettings
 			}
 			initialSettings = append(initialSettings, setting)
 		}
 	}
-
-	if !setInitialWindowSize {
+	if t.InitialWindowSize != 0 {
+		initialSettings = append(initialSettings, Setting{ID: SettingInitialWindowSize, Val: t.InitialWindowSize})
+	} else {
 		initialSettings = append(initialSettings, Setting{ID: SettingInitialWindowSize, Val: transportDefaultStreamFlow})
+	}
+	if t.HeaderTableSize != 0 {
+		initialSettings = append(initialSettings, Setting{ID: SettingHeaderTableSize, Val: t.HeaderTableSize})
+	} else {
+		initialSettings = append(initialSettings, Setting{ID: SettingHeaderTableSize, Val: initialHeaderTableSize})
 	}
 	if max := t.maxHeaderListSize(); max != 0 && !setMaxHeader {
 		initialSettings = append(initialSettings, Setting{ID: SettingMaxHeaderListSize, Val: max})
 	}
-	fmt.Printf("Settings: %v\n", initialSettings)
 
 	cc.bw.Write(clientPreface)
 	cc.fr.WriteSettings(initialSettings...)

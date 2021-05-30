@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	http "github.com/zMrKrabz/fhttp"
-	"golang.org/x/net/http2/hpack"
+	"github.com/zMrKrabz/fhttp/http2/hpack"
 )
 
 func TestPushPromiseHeadersToHTTPRequest(t *testing.T) {
@@ -199,7 +199,7 @@ func TestHandlePushNoActionCancel(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			cs := cc.newStreamWithId(2, false)
+			cs := cc.newStreamWithID(2, false)
 			pr := &PushedRequest{pushedStream: cs}
 			ph := &testPushHandlerRecordHandled{messageDone: !tt.returnBeforeComplete}
 			handlePushEarlyReturnCancel(ph, pr)

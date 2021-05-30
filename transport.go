@@ -272,7 +272,7 @@ type Transport struct {
 	// nextProtoOnce guards initialization of TLSNextProto and
 	// h2transport (via onceSetNextProtoDefaults)
 	nextProtoOnce      sync.Once
-	h2transport        h2Transport // non-nil if http2 wired up
+	H2transport        h2Transport // non-nil if http2 wired up
 	tlsNextProtoWasNil bool        // whether TLSNextProto was nil when the Once fired
 
 	// ForceAttemptHTTP2 controls whether HTTP/2 is enabled when a non-zero
@@ -281,6 +281,10 @@ type Transport struct {
 	// To use a custom dialer or TLS config and still attempt HTTP/2
 	// upgrades, set this to true.
 	ForceAttemptHTTP2 bool
+
+	// optional pre configured http2 transport. If nil and using http2,
+	// h1 transport will configure own http2 transport
+	Http2Transport *http2Transport
 }
 
 // A cancelKey is the Key of the reqCanceler map.
@@ -373,7 +377,7 @@ func (t *Transport) onceSetNextProtoDefaults() {
 	if rv := reflect.ValueOf(altProto["https"]); rv.IsValid() && rv.Type().Kind() == reflect.Struct && rv.Type().NumField() == 1 {
 		if v := rv.Field(0); v.CanInterface() {
 			if h2i, ok := v.Interface().(h2Transport); ok {
-				t.h2transport = h2i
+				t.H2transport = h2i
 				return
 			}
 		}
@@ -396,26 +400,14 @@ func (t *Transport) onceSetNextProtoDefaults() {
 	if omitBundledHTTP2 {
 		return
 	}
-	t2, err := http2configureTransports(t)
-	if err != nil {
-		log.Printf("Error enabling Transport HTTP/2 support: %v", err)
-		return
-	}
-	t.h2transport = t2
 
-	// Auto-configure the http2.Transport's MaxHeaderListSize from
-	// the http.Transport's MaxResponseHeaderBytes. They don't
-	// exactly mean the same thing, but they're close.
-	//
-	// TODO: also add this to x/net/http2.Configure Transport, behind
-	// a +build go1.7 build tag:
-	if limit1 := t.MaxResponseHeaderBytes; limit1 != 0 && t2.MaxHeaderListSize == 0 {
-		const h2max = 1<<32 - 1
-		if limit1 >= h2max {
-			t2.MaxHeaderListSize = h2max
-		} else {
-			t2.MaxHeaderListSize = uint32(limit1)
+	if t.H2transport == nil {
+		t2, err := http2configureTransports(t)
+		if err != nil {
+			log.Printf("Error enabling Transport HTTP/2 support: %v", err)
+			return
 		}
+		t.H2transport = t2
 	}
 }
 
@@ -775,7 +767,7 @@ func (t *Transport) CloseIdleConnections() {
 			pconn.close(errCloseIdleConns)
 		}
 	}
-	if t2 := t.h2transport; t2 != nil {
+	if t2 := t.H2transport; t2 != nil {
 		t2.CloseIdleConnections()
 	}
 }

@@ -11,18 +11,19 @@ import (
 	"testing"
 
 	http "github.com/zMrKrabz/fhttp"
+	"github.com/zMrKrabz/fhttp/http2"
 )
 
 type testPushHandlerPushReadResponse struct {
-	promise *http.Request
-	origReqURL *url.URL
+	promise       *http.Request
+	origReqURL    *url.URL
 	origReqHeader http.Header
-	push *http.Response
-	pushErr error
-	done chan struct{}
+	push          *http.Response
+	pushErr       error
+	done          chan struct{}
 }
 
-func (ph *testPushHandlerPushReadResponse) HandlePush (r *http.Http2PushedRequest) {
+func (ph *testPushHandlerPushReadResponse) HandlePush(r *http2.PushedRequest) {
 	ph.promise = r.Promise
 	ph.origReqURL = r.OriginalRequestURL
 	ph.origReqHeader = r.OriginalRequestHeader
@@ -89,23 +90,17 @@ func TestExample(t *testing.T) {
 // Test with Charles cert + proxy
 func TestWithCert(t *testing.T) {
 	home, err := os.UserHomeDir()
-
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-
 	caCert, err := os.ReadFile(fmt.Sprintf("%v/charles_cert.pem", home))
-
 	if err != nil {
 		t.Errorf("Could not find charles cert, %v", err.Error())
 		return
 	}
-
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
-
 	proxyURL, err := url.Parse("http://localhost:8888")
-
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -114,17 +109,25 @@ func TestWithCert(t *testing.T) {
 		TLSClientConfig: &tls.Config{
 			RootCAs: caCertPool,
 		},
-		Proxy: http.ProxyURL(proxyURL),
+		Proxy:             http.ProxyURL(proxyURL),
 		ForceAttemptHTTP2: true,
 	}
 
-	h2t := &http.Http2Transport{
-		PushHandler: &testPushHandlerPushReadResponse{},
-		T1: h1t,
+	t2, err := http2.ConfigureTransports(h1t)
+	if err != nil {
+		t.Fatalf(err.Error())
 	}
+	t2.Settings = []http2.Setting{
+		{ID: http2.SettingMaxConcurrentStreams, Val: 1000},
+		{ID: http2.SettingMaxFrameSize, Val: 16384},
+		{ID: http2.SettingMaxHeaderListSize, Val: 262144},
+	}
+	t2.InitialWindowSize = 6291456
+	t2.HeaderTableSize = 65536
+	h1t.H2transport = t2
 
 	client := http.Client{
-		Transport: h2t,
+		Transport: h1t,
 	}
 
 	req, err := http.NewRequest("GET", "https://httpbin.org/headers", strings.NewReader(""))
