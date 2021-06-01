@@ -1761,7 +1761,7 @@ func (fr *http2Framer) ReadFrame() (http2Frame, error) {
 		return nil, err
 	}
 	if fr.logReads {
-		fr.debugReadLoggerf("http2: Framer %p: read %v", fr, http2summarizeFrame(f))
+		fr.debugReadLoggerf("http2: Framer %p: read %v. Type: %v", fr, http2summarizeFrame(f), fh.Type)
 	}
 	if (fh.Type == http2FrameHeaders || fh.Type == http2FramePushPromise) && fr.ReadMetaHeaders != nil {
 		return fr.readMetaFrame(f.(http2continuable))
@@ -2821,7 +2821,7 @@ func (fr *http2Framer) maxHeaderStringLen() int {
 // merges them into a Frame with the decoded hpack values.
 func (fr *http2Framer) readMetaFrame(cont http2continuable) (http2Frame, error) {
 	if fr.AllowIllegalReads {
-		return nil, errors.New("illegal use of AllowIllegalReads with ReadMetaHeaders")
+		return nil, errors.New("illegal use of AllowIllegalReads")
 	}
 	mf := &http2metaFrame{}
 
@@ -2866,10 +2866,9 @@ func (fr *http2Framer) readMetaFrame(cont http2continuable) (http2Frame, error) 
 
 		mf.Fields = append(mf.Fields, hf)
 	})
-	// Lose reference to MetaHeadersFrame:
+	// Lose reference to metaFrame:
 	defer hdec.SetEmitFunc(func(hf hpack.HeaderField) {})
-
-	hc := cont
+	var hc = cont
 	for {
 		frag := hc.HeaderBlockFragment()
 		if _, err := hdec.Write(frag); err != nil {
@@ -3735,6 +3734,26 @@ var (
 	http2errInvalidScheme          = errors.New("http2: scheme must be http or https")
 )
 
+// DefaultPushHandler is a simple push handler for reading pushed responses
+type http2DefaultPushHandler struct {
+	promise       *Request
+	origReqURL    *url.URL
+	origReqHeader Header
+	push          *Response
+	pushErr       error
+	done          chan struct{}
+}
+
+func (ph *http2DefaultPushHandler) HandlePush(r *http2PushedRequest) {
+	ph.promise = r.Promise
+	ph.origReqURL = r.OriginalRequestURL
+	ph.origReqHeader = r.OriginalRequestHeader
+	ph.push, ph.pushErr = r.ReadResponse(r.Promise.Context())
+	if ph.done != nil {
+		close(ph.done)
+	}
+}
+
 // PushHandler consumes a pushed response.
 type http2PushHandler interface {
 	// HandlePush will be called once for every PUSH_PROMISE received
@@ -3750,8 +3769,10 @@ type http2PushedRequest struct {
 	//
 	// Promise.RemoteAddr is the address of the server that started this push request.
 	Promise *Request
+
 	// OriginalRequestURL is the URL of the original client request that triggered the push.
 	OriginalRequestURL *url.URL
+
 	// OriginalRequestHeader contains the headers of the original client request that triggered the push.
 	OriginalRequestHeader Header
 	pushedStream          *http2clientStream
@@ -6630,7 +6651,6 @@ type http2startPushRequest struct {
 
 func (sc *http2serverConn) startPush(msg *http2startPushRequest) {
 	sc.serveG.check()
-
 	// http://tools.ietf.org/html/rfc7540#section-6.6.
 	// PUSH_PROMISE frames MUST only be sent on a peer-initiated stream that
 	// is in either the "open" or "half-closed (remote)" state.
@@ -6767,9 +6787,9 @@ func http2checkValidPushPromiseRequestHeaders(h Header) error {
 			return fmt.Errorf("promised request cannot include body related header %q", k)
 		}
 	}
-	if _, ok := h["Host"]; ok {
-		return fmt.Errorf(`promised URL must be absolute so "Host" header disallowed`)
-	}
+	// if _, ok := h["Host"]; ok {
+	// 	return fmt.Errorf(`promised URL must be absolute so "Host" header disallowed`)
+	// }
 	return nil
 }
 
@@ -7313,9 +7333,10 @@ func (t *http2Transport) CloseIdleConnections() {
 }
 
 var (
-	http2errClientConnClosed    = errors.New("http2: client conn is closed")
-	http2errClientConnUnusable  = errors.New("http2: client conn not usable")
-	http2errClientConnGotGoAway = errors.New("http2: Transport received Server's graceful shutdown GOAWAY")
+	http2errClientConnClosed               = errors.New("http2: client conn is closed")
+	http2errClientConnUnusable             = errors.New("http2: client conn not usable")
+	http2errClientConnGotGoAway            = errors.New("http2: Transport received Server's graceful shutdown GOAWAY")
+	http2errSettingsIncludeIllegalSettings = errors.New("http2: Settings contains either SettingInitialWindowSize or SettingHeaderTableSize, which should be specified in transport instead")
 )
 
 // shouldRetryRequest is called by RoundTrip when a request fails to get
@@ -7506,6 +7527,9 @@ func (t *http2Transport) newClientConn(c net.Conn, addr string, singleUse bool) 
 			if setting.ID == http2SettingMaxHeaderListSize {
 				setMaxHeader = true
 			}
+			if setting.ID == http2SettingHeaderTableSize || setting.ID == http2SettingInitialWindowSize {
+				return nil, http2errSettingsIncludeIllegalSettings
+			}
 			initialSettings = append(initialSettings, setting)
 		}
 	}
@@ -7513,6 +7537,11 @@ func (t *http2Transport) newClientConn(c net.Conn, addr string, singleUse bool) 
 		initialSettings = append(initialSettings, http2Setting{ID: http2SettingInitialWindowSize, Val: t.InitialWindowSize})
 	} else {
 		initialSettings = append(initialSettings, http2Setting{ID: http2SettingInitialWindowSize, Val: http2transportDefaultStreamFlow})
+	}
+	if t.HeaderTableSize != 0 {
+		initialSettings = append(initialSettings, http2Setting{ID: http2SettingHeaderTableSize, Val: t.HeaderTableSize})
+	} else {
+		initialSettings = append(initialSettings, http2Setting{ID: http2SettingHeaderTableSize, Val: http2initialHeaderTableSize})
 	}
 	if max := t.maxHeaderListSize(); max != 0 && !setMaxHeader {
 		initialSettings = append(initialSettings, http2Setting{ID: http2SettingMaxHeaderListSize, Val: max})
@@ -8409,7 +8438,6 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 		}
 
 		for _, kv := range kvs {
-
 			if strings.EqualFold(kv.Key, "host") || strings.EqualFold(kv.Key, "content-length") {
 				// Host is :authority, already sent.
 				// Content-Length is automatic, set below.
@@ -8762,6 +8790,7 @@ func (rl *http2clientConnReadLoop) run() error {
 		case *http2SettingsFrame:
 			err = rl.processSettings(f)
 		case *http2MetaPushPromiseFrame:
+			cc.vlogf("http2: handling push promise frame")
 			err = rl.processPushPromise(f)
 		case *http2WindowUpdateFrame:
 			err = rl.processWindowUpdate(f)

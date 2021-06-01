@@ -20,6 +20,26 @@ var (
 	errInvalidScheme          = errors.New("http2: scheme must be http or https")
 )
 
+// DefaultPushHandler is a simple push handler for reading pushed responses
+type DefaultPushHandler struct {
+	promise       *http.Request
+	origReqURL    *url.URL
+	origReqHeader http.Header
+	push          *http.Response
+	pushErr       error
+	done          chan struct{}
+}
+
+func (ph *DefaultPushHandler) HandlePush(r *PushedRequest) {
+	ph.promise = r.Promise
+	ph.origReqURL = r.OriginalRequestURL
+	ph.origReqHeader = r.OriginalRequestHeader
+	ph.push, ph.pushErr = r.ReadResponse(r.Promise.Context())
+	if ph.done != nil {
+		close(ph.done)
+	}
+}
+
 // PushHandler consumes a pushed response.
 type PushHandler interface {
 	// HandlePush will be called once for every PUSH_PROMISE received
@@ -35,8 +55,10 @@ type PushedRequest struct {
 	//
 	// Promise.RemoteAddr is the address of the server that started this push request.
 	Promise *http.Request
+
 	// OriginalRequestURL is the URL of the original client request that triggered the push.
 	OriginalRequestURL *url.URL
+
 	// OriginalRequestHeader contains the headers of the original client request that triggered the push.
 	OriginalRequestHeader http.Header
 	pushedStream          *clientStream

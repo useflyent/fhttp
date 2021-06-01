@@ -2819,7 +2819,6 @@ type startPushRequest struct {
 
 func (sc *serverConn) startPush(msg *startPushRequest) {
 	sc.serveG.check()
-
 	// http://tools.ietf.org/html/rfc7540#section-6.6.
 	// PUSH_PROMISE frames MUST only be sent on a peer-initiated stream that
 	// is in either the "open" or "half-closed (remote)" state.
@@ -2956,9 +2955,9 @@ func checkValidPushPromiseRequestHeaders(h http.Header) error {
 			return fmt.Errorf("promised request cannot include body related header %q", k)
 		}
 	}
-	if _, ok := h["Host"]; ok {
-		return fmt.Errorf(`promised URL must be absolute so "Host" header disallowed`)
-	}
+	// if _, ok := h["Host"]; ok {
+	// 	return fmt.Errorf(`promised URL must be absolute so "Host" header disallowed`)
+	// }
 	return nil
 }
 

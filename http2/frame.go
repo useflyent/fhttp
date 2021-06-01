@@ -513,7 +513,7 @@ func (fr *Framer) ReadFrame() (Frame, error) {
 		return nil, err
 	}
 	if fr.logReads {
-		fr.debugReadLoggerf("http2: Framer %p: read %v", fr, summarizeFrame(f))
+		fr.debugReadLoggerf("http2: Framer %p: read %v. Type: %v", fr, summarizeFrame(f), fh.Type)
 	}
 	if (fh.Type == FrameHeaders || fh.Type == FramePushPromise) && fr.ReadMetaHeaders != nil {
 		return fr.readMetaFrame(f.(continuable))
@@ -1391,6 +1391,7 @@ type continuable interface {
 	HeaderBlockFragment() []byte
 	clearHeaderBlockFragment()
 }
+
 type metaFrame struct {
 	Fields    []hpack.HeaderField
 	Truncated bool
@@ -1572,7 +1573,7 @@ func (fr *Framer) maxHeaderStringLen() int {
 // merges them into a Frame with the decoded hpack values.
 func (fr *Framer) readMetaFrame(cont continuable) (Frame, error) {
 	if fr.AllowIllegalReads {
-		return nil, errors.New("illegal use of AllowIllegalReads with ReadMetaHeaders")
+		return nil, errors.New("illegal use of AllowIllegalReads")
 	}
 	mf := &metaFrame{}
 
@@ -1617,10 +1618,9 @@ func (fr *Framer) readMetaFrame(cont continuable) (Frame, error) {
 
 		mf.Fields = append(mf.Fields, hf)
 	})
-	// Lose reference to MetaHeadersFrame:
+	// Lose reference to metaFrame:
 	defer hdec.SetEmitFunc(func(hf hpack.HeaderField) {})
-
-	hc := cont
+	var hc = cont
 	for {
 		frag := hc.HeaderBlockFragment()
 		if _, err := hdec.Write(frag); err != nil {

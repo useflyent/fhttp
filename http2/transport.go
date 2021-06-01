@@ -1661,7 +1661,6 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 		}
 
 		for _, kv := range kvs {
-
 			if strings.EqualFold(kv.Key, "host") || strings.EqualFold(kv.Key, "content-length") {
 				// Host is :authority, already sent.
 				// Content-Length is automatic, set below.
@@ -2014,6 +2013,7 @@ func (rl *clientConnReadLoop) run() error {
 		case *SettingsFrame:
 			err = rl.processSettings(f)
 		case *MetaPushPromiseFrame:
+			cc.vlogf("http2: handling push promise frame")
 			err = rl.processPushPromise(f)
 		case *WindowUpdateFrame:
 			err = rl.processWindowUpdate(f)
