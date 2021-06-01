@@ -81,7 +81,7 @@ var writeSetCookiesTests = []struct {
 		&Cookie{Name: "cookie-15", Value: "samesite-none", SameSite: SameSiteNoneMode},
 		"cookie-15=samesite-none; SameSite=None",
 	},
-	// The "special" cookies have values containing commas or spaces which
+	// The "special" cookies have Values containing commas or spaces which
 	// are disallowed by RFC 6265 but are common in the wild.
 	{
 		&Cookie{Name: "special-1", Value: "a z"},
@@ -319,7 +319,7 @@ var readSetCookiesTests = []struct {
 		}},
 	},
 	// Make sure we can properly read back the Set-Cookie headers we create
-	// for values containing spaces or commas:
+	// for Values containing spaces or commas:
 	{
 		Header{"Set-Cookie": {`special-1=a z`}},
 		[]*Cookie{{Name: "special-1", Value: "a z", Raw: `special-1=a z`}},

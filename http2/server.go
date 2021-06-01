@@ -1421,7 +1421,7 @@ func (sc *serverConn) processFrame(f Frame) error {
 		return sc.processPriority(f)
 	case *GoAwayFrame:
 		return sc.processGoAway(f)
-	case *PushPromiseFrame:
+	case *MetaPushPromiseFrame:
 		// A client cannot push. Thus, servers MUST treat the receipt of a PUSH_PROMISE
 		// frame as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
 		return ConnectionError(ErrCodeProtocol)
@@ -2770,16 +2770,8 @@ func (w *responseWriter) Push(target string, opts *http.PushOptions) error {
 		if strings.HasPrefix(k, ":") {
 			return fmt.Errorf("promised request headers cannot include pseudo header %q", k)
 		}
-		// These headers are meaningful only if the request has a body,
-		// but PUSH_PROMISE requests cannot have a body.
-		// http://tools.ietf.org/html/rfc7540#section-8.2
-		// Also disallow Host, since the promised URL must be absolute.
-		switch strings.ToLower(k) {
-		case "content-length", "content-encoding", "trailer", "te", "expect", "host":
-			return fmt.Errorf("promised request headers cannot include %q", k)
-		}
 	}
-	if err := checkValidHTTP2RequestHeaders(opts.Header); err != nil {
+	if err := checkValidPushPromiseRequestHeaders(opts.Header); err != nil {
 		return err
 	}
 
@@ -2827,7 +2819,6 @@ type startPushRequest struct {
 
 func (sc *serverConn) startPush(msg *startPushRequest) {
 	sc.serveG.check()
-
 	// http://tools.ietf.org/html/rfc7540#section-6.6.
 	// PUSH_PROMISE frames MUST only be sent on a peer-initiated stream that
 	// is in either the "open" or "half-closed (remote)" state.
@@ -2945,6 +2936,28 @@ func checkValidHTTP2RequestHeaders(h http.Header) error {
 	if len(te) > 0 && (len(te) > 1 || (te[0] != "trailers" && te[0] != "")) {
 		return errors.New(`request header "TE" may only be "trailers" in HTTP/2`)
 	}
+	return nil
+}
+
+var bodyRequestHeaders = []string{
+	"Content-Encoding",
+	"Content-Length",
+	"Expect",
+	"Te",
+	"Trailer",
+}
+
+func checkValidPushPromiseRequestHeaders(h http.Header) error {
+	// PUSH_PROMISE requests cannot have a body
+	// http://tools.ietf.org/html/rfc7540#section-8.2
+	for _, k := range bodyRequestHeaders {
+		if _, ok := h[k]; ok {
+			return fmt.Errorf("promised request cannot include body related header %q", k)
+		}
+	}
+	// if _, ok := h["Host"]; ok {
+	// 	return fmt.Errorf(`promised URL must be absolute so "Host" header disallowed`)
+	// }
 	return nil
 }
 

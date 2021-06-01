@@ -51,7 +51,7 @@ import (
 // a redirect may possibly alter a cookie set in the initial request.
 // When forwarding the "Cookie" header, any mutated cookies will be omitted,
 // with the expectation that the Jar will insert those mutated cookies
-// with the updated values (assuming the origin matches).
+// with the updated Values (assuming the origin matches).
 // If Jar is nil, the initial cookies are forwarded without change.
 //
 type Client struct {
@@ -79,7 +79,7 @@ type Client struct {
 	// Jar specifies the cookie jar.
 	//
 	// The Jar is used to insert relevant cookies into every
-	// outbound Request and is updated with the cookie values
+	// outbound Request and is updated with the cookie Values
 	// of every inbound Response. The Jar is consulted for every
 	// redirect that the Client follows.
 	//
@@ -316,7 +316,7 @@ func knownRoundTripperImpl(rt RoundTripper, req *Request) bool {
 			return knownRoundTripperImpl(altRT, req)
 		}
 		return true
-	case *Http2Transport, http2noDialH2RoundTripper:
+	case *http2Transport, http2noDialH2RoundTripper:
 		return true
 	}
 	// There's a very minor chance of a false positive with this.
@@ -789,7 +789,7 @@ func (c *Client) makeHeadersCopier(ireq *Request) func(*Request) {
 			}
 		}
 
-		// Copy the initial request's Header values
+		// Copy the initial request's Header Values
 		// (at least the safe ones).
 		for k, vv := range ireqhdr {
 			if shouldCopyHeaderOnRedirect(k, preq.URL, req.URL) {
@@ -846,7 +846,7 @@ func (c *Client) Post(url, contentType string, body io.Reader) (resp *Response, 
 }
 
 // PostForm issues a POST to the specified URL, with data's keys and
-// values URL-encoded as the request body.
+// Values URL-encoded as the request body.
 //
 // The Content-Type header is set to application/x-www-form-urlencoded.
 // To set other headers, use NewRequest and DefaultClient.Do.
@@ -863,7 +863,7 @@ func PostForm(url string, data url.Values) (resp *Response, err error) {
 }
 
 // PostForm issues a POST to the specified URL,
-// with data's keys and values URL-encoded as the request body.
+// with data's keys and Values URL-encoded as the request body.
 //
 // The Content-Type header is set to application/x-www-form-urlencoded.
 // To set other headers, use NewRequest and Client.Do.

@@ -328,7 +328,7 @@ func TestSetBasicAuth(t *testing.T) {
 }
 
 func TestMultipartRequest(t *testing.T) {
-	// Test that we can read the values and files of a
+	// Test that we can read the Values and files of a
 	// multipart request with FormValue and FormFile,
 	// and that ParseMultipartForm can be called multiple times.
 	req := newTestMultipartRequest(t)
@@ -345,7 +345,7 @@ func TestMultipartRequest(t *testing.T) {
 
 func TestMultipartRequestAuto(t *testing.T) {
 	// Test that FormValue and FormFile automatically invoke
-	// ParseMultipartForm and return the right values.
+	// ParseMultipartForm and return the right Values.
 	req := newTestMultipartRequest(t)
 	defer func() {
 		if req.MultipartForm != nil {
@@ -442,7 +442,7 @@ var readRequestErrorTests = []struct {
 		header: Header{},
 	},
 
-	// Multiple Content-Length values should either be
+	// Multiple Content-Length Values should either be
 	// deduplicated if same or reject otherwise
 	// See Issue 16490.
 	5: {

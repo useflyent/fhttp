@@ -4750,7 +4750,7 @@ func TestServerValidatesHeaders(t *testing.T) {
 		{"foo\xffbar: foo\r\n", 400},                         // binary in header
 		{"foo\x00bar: foo\r\n", 400},                         // binary in header
 		{"Foo: " + strings.Repeat("x", 1<<21) + "\r\n", 431}, // header too large
-		// Spaces between the header key and colon are not allowed.
+		// Spaces between the header Key and colon are not allowed.
 		// See RFC 7230, Section 3.2.4.
 		{"Foo : bar\r\n", 400},
 		{"Foo\t: bar\r\n", 400},
@@ -6075,7 +6075,7 @@ func TestServerContexts(t *testing.T) {
 	}
 	ts.Config.ConnContext = func(ctx context.Context, c net.Conn) context.Context {
 		if got, want := ctx.Value(baseKey{}), "base"; got != want {
-			t.Errorf("in ConnContext, base context key = %#v; want %q", got, want)
+			t.Errorf("in ConnContext, base context Key = %#v; want %q", got, want)
 		}
 		return context.WithValue(ctx, connKey{}, "conn")
 	}
@@ -6088,10 +6088,10 @@ func TestServerContexts(t *testing.T) {
 	res.Body.Close()
 	ctx := <-ch
 	if got, want := ctx.Value(baseKey{}), "base"; got != want {
-		t.Errorf("base context key = %#v; want %q", got, want)
+		t.Errorf("base context Key = %#v; want %q", got, want)
 	}
 	if got, want := ctx.Value(connKey{}), "conn"; got != want {
-		t.Errorf("conn context key = %#v; want %q", got, want)
+		t.Errorf("conn context Key = %#v; want %q", got, want)
 	}
 }
 
@@ -6115,7 +6115,7 @@ func TestServerContextsHTTP2(t *testing.T) {
 	}
 	ts.Config.ConnContext = func(ctx context.Context, c net.Conn) context.Context {
 		if got, want := ctx.Value(baseKey{}), "base"; got != want {
-			t.Errorf("in ConnContext, base context key = %#v; want %q", got, want)
+			t.Errorf("in ConnContext, base context Key = %#v; want %q", got, want)
 		}
 		return context.WithValue(ctx, connKey{}, "conn")
 	}
@@ -6132,10 +6132,10 @@ func TestServerContextsHTTP2(t *testing.T) {
 	res.Body.Close()
 	ctx := <-ch
 	if got, want := ctx.Value(baseKey{}), "base"; got != want {
-		t.Errorf("base context key = %#v; want %q", got, want)
+		t.Errorf("base context Key = %#v; want %q", got, want)
 	}
 	if got, want := ctx.Value(connKey{}), "conn"; got != want {
-		t.Errorf("conn context key = %#v; want %q", got, want)
+		t.Errorf("conn context Key = %#v; want %q", got, want)
 	}
 }
 
@@ -6149,7 +6149,7 @@ func TestConnContextNotModifyingAllContexts(t *testing.T) {
 	}))
 	ts.Config.ConnContext = func(ctx context.Context, c net.Conn) context.Context {
 		if got := ctx.Value(connKey{}); got != nil {
-			t.Errorf("in ConnContext, unexpected context key = %#v", got)
+			t.Errorf("in ConnContext, unexpected context Key = %#v", got)
 		}
 		return context.WithValue(ctx, connKey{}, "conn")
 	}

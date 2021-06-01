@@ -326,7 +326,7 @@ func TestParseTransferEncoding(t *testing.T) {
 	}
 }
 
-// issue 39017 - disallow Content-Length values such as "+3"
+// issue 39017 - disallow Content-Length Values such as "+3"
 func TestParseContentLength(t *testing.T) {
 	tests := []struct {
 		cl      string

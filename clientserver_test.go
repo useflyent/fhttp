@@ -649,7 +649,7 @@ func testTrailersServerToClient(t *testing.T, h2, flush bool) {
 
 		// How handlers set Trailers: declare it ahead of time
 		// with the Trailer header, and then mutate the
-		// Header() of those values later, after the response
+		// Header() of those Values later, after the response
 		// has been written (we wrote to w above).
 		w.Header().Set("Server-Trailer-A", "valuea")
 		w.Header().Set("Server-Trailer-C", "valuec") // skipping B
@@ -1120,14 +1120,14 @@ func testTransportRejectsInvalidHeaders(t *testing.T, h2 bool) {
 		key, val string
 		ok       bool
 	}{
-		{"Foo", "capital-key", true}, // verify h2 allows capital keys
+		{"Foo", "capital-Key", true}, // verify h2 allows capital keys
 		{"Foo", "foo\x00bar", false}, // \x00 byte in value not allowed
 		{"Foo", "two\nlines", false}, // \n byte in value not allowed
-		{"bogus\nkey", "v", false},   // \n byte also not allowed in key
+		{"bogus\nKey", "v", false},   // \n byte also not allowed in Key
 		{"A space", "v", false},      // spaces in keys not allowed
-		{"имя", "v", false},          // key must be ascii
+		{"имя", "v", false},          // Key must be ascii
 		{"name", "валю", true},       // value may be non-ascii
-		{"", "v", false},             // key must be non-empty
+		{"", "v", false},             // Key must be non-empty
 		{"k", "", true},              // value may be empty
 	}
 	for _, tt := range tests {
@@ -1152,9 +1152,9 @@ func testTransportRejectsInvalidHeaders(t *testing.T, h2 bool) {
 		}
 
 		if !tt.ok && dialed {
-			t.Errorf("For key %q, value %q, transport dialed. Expected local failure. Response was: (%v, %v)\nServer replied with: %s", tt.key, tt.val, res, err, body)
+			t.Errorf("For Key %q, value %q, transport dialed. Expected local failure. Response was: (%v, %v)\nServer replied with: %s", tt.key, tt.val, res, err, body)
 		} else if (err == nil) != tt.ok {
-			t.Errorf("For key %q, value %q; got err = %v; want ok=%v", tt.key, tt.val, err, tt.ok)
+			t.Errorf("For Key %q, value %q; got err = %v; want ok=%v", tt.key, tt.val, err, tt.ok)
 		}
 	}
 }

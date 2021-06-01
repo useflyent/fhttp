@@ -390,7 +390,7 @@ func TestTransportIdleCacheKeys(t *testing.T) {
 	}
 
 	if e := "|http|" + ts.Listener.Addr().String(); keys[0] != e {
-		t.Errorf("Expected idle cache key %q; got %q", e, keys[0])
+		t.Errorf("Expected idle cache Key %q; got %q", e, keys[0])
 	}
 
 	tr.CloseIdleConnections()
@@ -520,7 +520,7 @@ func TestTransportMaxPerHostIdleConns(t *testing.T) {
 	addr := ts.Listener.Addr().String()
 	cacheKey := "|http|" + addr
 	if keys[0] != cacheKey {
-		t.Fatalf("Expected idle cache key %q; got %q", cacheKey, keys[0])
+		t.Fatalf("Expected idle cache Key %q; got %q", cacheKey, keys[0])
 	}
 	if e, g := 1, tr.IdleConnCountForTesting("http", addr); e != g {
 		t.Errorf("after first response, expected %d idle conns; got %d", e, g)
@@ -3475,7 +3475,7 @@ func TestRetryRequestsOnError(t *testing.T) {
 		},
 		{
 			name: "NothingWrittenNoBody",
-			// It's key that we return 0 here -- that's what enables Transport to know
+			// It's Key that we return 0 here -- that's what enables Transport to know
 			// that nothing was written, even though this is a non-idempotent request.
 			failureN:   0,
 			failureErr: errors.New("second write fails"),
@@ -3486,7 +3486,7 @@ func TestRetryRequestsOnError(t *testing.T) {
 		},
 		{
 			name: "NothingWrittenGetBody",
-			// It's key that we return 0 here -- that's what enables Transport to know
+			// It's Key that we return 0 here -- that's what enables Transport to know
 			// that nothing was written, even though this is a non-idempotent request.
 			failureN:   0,
 			failureErr: errors.New("second write fails"),
@@ -3698,7 +3698,7 @@ func TestTransportDialContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := context.WithValue(context.Background(), "some-key", "some-value")
+	ctx := context.WithValue(context.Background(), "some-Key", "some-value")
 	res, err := c.Do(req.WithContext(ctx))
 	if err != nil {
 		t.Fatal(err)
@@ -3742,7 +3742,7 @@ func TestTransportDialTLSContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := context.WithValue(context.Background(), "some-key", "some-value")
+	ctx := context.WithValue(context.Background(), "some-Key", "some-value")
 	res, err := c.Do(req.WithContext(ctx))
 	if err != nil {
 		t.Fatal(err)
@@ -3779,7 +3779,7 @@ func TestRoundTripReturnsProxyError(t *testing.T) {
 func TestTransportCloseIdleConnsThenReturn(t *testing.T) {
 	tr := &Transport{}
 	wantIdle := func(when string, n int) bool {
-		got := tr.IdleConnCountForTesting("http", "example.com") // key used by PutIdleTestConn
+		got := tr.IdleConnCountForTesting("http", "example.com") // Key used by PutIdleTestConn
 		if got == n {
 			return true
 		}
@@ -3819,7 +3819,7 @@ func TestTransportCloseIdleConnsThenReturn(t *testing.T) {
 func TestTransportTraceGotConnH2IdleConns(t *testing.T) {
 	tr := &Transport{}
 	wantIdle := func(when string, n int) bool {
-		got := tr.IdleConnCountForTesting("https", "example.com:443") // key used by PutIdleTestConnH2
+		got := tr.IdleConnCountForTesting("https", "example.com:443") // Key used by PutIdleTestConnH2
 		if got == n {
 			return true
 		}
@@ -5705,12 +5705,12 @@ func TestTransportRequestReplayable(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "POST_idempotency-key",
+			name: "POST_idempotency-Key",
 			req:  &Request{Method: "POST", Header: Header{"Idempotency-Key": {"x"}}},
 			want: true,
 		},
 		{
-			name: "POST_x-idempotency-key",
+			name: "POST_x-idempotency-Key",
 			req:  &Request{Method: "POST", Header: Header{"X-Idempotency-Key": {"x"}}},
 			want: true,
 		},
@@ -5914,7 +5914,7 @@ func TestTransportClone(t *testing.T) {
 	}
 
 	if _, ok := tr2.TLSNextProto["foo"]; !ok {
-		t.Errorf("cloned Transport lacked TLSNextProto 'foo' key")
+		t.Errorf("cloned Transport lacked TLSNextProto 'foo' Key")
 	}
 
 	// But test that a nil TLSNextProto is kept nil:
@@ -6067,7 +6067,7 @@ func TestTransportClosesBodyOnInvalidRequests(t *testing.T) {
 			wantErr: "nil Request.URL",
 		},
 		{
-			name: "invalid header key",
+			name: "invalid header Key",
 			req: &Request{
 				Method: "GET",
 				Header: Header{"💡": {"emoji"}},
@@ -6079,7 +6079,7 @@ func TestTransportClosesBodyOnInvalidRequests(t *testing.T) {
 			name: "invalid header value",
 			req: &Request{
 				Method: "POST",
-				Header: Header{"key": {"\x19"}},
+				Header: Header{"Key": {"\x19"}},
 				URL:    u,
 			},
 			wantErr: "invalid header field value",

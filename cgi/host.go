@@ -20,7 +20,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"net/http"
 	"net/textproto"
 	"os"
 	"os/exec"
@@ -29,6 +28,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	http "github.com/zMrKrabz/fhttp"
 
 	"golang.org/x/net/http/httpguts"
 )

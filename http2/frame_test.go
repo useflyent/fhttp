@@ -729,12 +729,19 @@ func TestWritePushPromise(t *testing.T) {
 	}
 }
 
-// test checkFrameOrder and that HEADERS and CONTINUATION frames can't be intermingled.
+// test checkFrameOrder and that HEADERS/PUSH_PROMISE and CONTINUATION frames can't be intermingled.
 func TestReadFrameOrder(t *testing.T) {
 	head := func(f *Framer, id uint32, end bool) {
 		f.WriteHeaders(HeadersFrameParam{
 			StreamID:      id,
 			BlockFragment: []byte("foo"), // unused, but non-empty
+			EndHeaders:    end,
+		})
+	}
+	push := func(f *Framer, id uint32, end bool) {
+		f.WritePushPromise(PushPromiseParam{
+			StreamID:      id,
+			BlockFragment: []byte("foo"),
 			EndHeaders:    end,
 		})
 	}
@@ -755,31 +762,62 @@ func TestReadFrameOrder(t *testing.T) {
 		},
 		1: {
 			w: func(f *Framer) {
+				push(f, 1, true)
+			},
+		},
+		2: {
+			w: func(f *Framer) {
 				head(f, 1, true)
 				head(f, 2, true)
 			},
 		},
-		2: {
+		3: {
+			w: func(f *Framer) {
+				push(f, 1, true)
+				push(f, 2, true)
+			},
+		},
+		4: {
 			wantErr: "got HEADERS for stream 2; expected CONTINUATION following HEADERS for stream 1",
 			w: func(f *Framer) {
 				head(f, 1, false)
 				head(f, 2, true)
 			},
 		},
-		3: {
+		5: {
+			wantErr: "got PUSH_PROMISE for stream 2; expected CONTINUATION following PUSH_PROMISE for stream 1",
+			w: func(f *Framer) {
+				push(f, 1, false)
+				push(f, 2, true)
+			},
+		},
+		6: {
 			wantErr: "got DATA for stream 1; expected CONTINUATION following HEADERS for stream 1",
 			w: func(f *Framer) {
 				head(f, 1, false)
 			},
 		},
-		4: {
+		7: {
+			wantErr: "got DATA for stream 1; expected CONTINUATION following PUSH_PROMISE for stream 1",
+			w: func(f *Framer) {
+				push(f, 1, false)
+			},
+		},
+		8: {
 			w: func(f *Framer) {
 				head(f, 1, false)
 				cont(f, 1, true)
 				head(f, 2, true)
 			},
 		},
-		5: {
+		9: {
+			w: func(f *Framer) {
+				push(f, 1, false)
+				cont(f, 1, true)
+				push(f, 2, true)
+			},
+		},
+		10: {
 			wantErr: "got CONTINUATION for stream 2; expected stream 1",
 			w: func(f *Framer) {
 				head(f, 1, false)
@@ -787,31 +825,45 @@ func TestReadFrameOrder(t *testing.T) {
 				head(f, 2, true)
 			},
 		},
-		6: {
+		11: {
+			wantErr: "got CONTINUATION for stream 2; expected stream 1",
+			w: func(f *Framer) {
+				push(f, 1, false)
+				cont(f, 2, true)
+				push(f, 2, true)
+			},
+		},
+		12: {
 			wantErr: "unexpected CONTINUATION for stream 1",
 			w: func(f *Framer) {
 				cont(f, 1, true)
 			},
 		},
-		7: {
+		13: {
 			wantErr: "unexpected CONTINUATION for stream 1",
 			w: func(f *Framer) {
 				cont(f, 1, false)
 			},
 		},
-		8: {
+		14: {
 			wantErr: "HEADERS frame with stream ID 0",
 			w: func(f *Framer) {
 				head(f, 0, true)
 			},
 		},
-		9: {
+		15: {
+			wantErr: "PUSH_PROMISE frame with stream ID 0",
+			w: func(f *Framer) {
+				push(f, 0, true)
+			},
+		},
+		16: {
 			wantErr: "CONTINUATION frame with stream ID 0",
 			w: func(f *Framer) {
 				cont(f, 0, true)
 			},
 		},
-		10: {
+		17: {
 			wantErr: "unexpected CONTINUATION for stream 1",
 			atLeast: 5,
 			w: func(f *Framer) {
@@ -823,7 +875,20 @@ func TestReadFrameOrder(t *testing.T) {
 				cont(f, 1, false)
 			},
 		},
+		18: {
+			wantErr: "unexpected CONTINUATION for stream 1",
+			atLeast: 5,
+			w: func(f *Framer) {
+				push(f, 1, false)
+				cont(f, 1, false)
+				cont(f, 1, false)
+				cont(f, 1, false)
+				cont(f, 1, true)
+				cont(f, 1, false)
+			},
+		},
 	}
+
 	for i, tt := range tests {
 		buf := new(bytes.Buffer)
 		f := NewFramer(buf, buf)
@@ -856,7 +921,7 @@ func TestReadFrameOrder(t *testing.T) {
 			continue
 		}
 		if !((f.errDetail == nil && tt.wantErr == "") || (fmt.Sprint(f.errDetail) == tt.wantErr)) {
-			t.Errorf("%d. framer eror = %q; want %q\n%s", i, f.errDetail, tt.wantErr, log.Bytes())
+			t.Errorf("%d. framer error = %q; want %q\n%s", i, f.errDetail, tt.wantErr, log.Bytes())
 		}
 		if n < tt.atLeast {
 			t.Errorf("%d. framer only read %d frames; want at least %d\n%s", i, n, tt.atLeast, log.Bytes())
@@ -864,48 +929,25 @@ func TestReadFrameOrder(t *testing.T) {
 	}
 }
 
-func TestMetaFrameHeader(t *testing.T) {
-	write := func(f *Framer, frags ...[]byte) {
-		for i, frag := range frags {
-			end := (i == len(frags)-1)
-			if i == 0 {
-				f.WriteHeaders(HeadersFrameParam{
-					StreamID:      1,
-					BlockFragment: frag,
-					EndHeaders:    end,
-				})
-			} else {
-				f.WriteContinuation(1, end, frag)
-			}
-		}
-	}
+func testMetaFrame(t *testing.T,
+	write func(f *Framer, frags ...[]byte),
+	want func(flags Flags, length uint32, pairs ...string) Frame,
+	headersCmp func(t *testing.T, testName string, gotMetaFrame, wantMetaFrame interface{}),
+	lengthIncrementBeyondMetaHeaderFrame uint32) {
 
-	want := func(flags Flags, length uint32, pairs ...string) *MetaHeadersFrame {
-		mh := &MetaHeadersFrame{
-			HeadersFrame: &HeadersFrame{
-				FrameHeader: FrameHeader{
-					Type:     FrameHeaders,
-					Flags:    flags,
-					Length:   length,
-					StreamID: 1,
-				},
-			},
-			Fields: []hpack.HeaderField(nil),
+	truncated := func(f Frame) Frame {
+		switch f := f.(type) {
+		case *MetaHeadersFrame:
+			f.Truncated = true
+		case *MetaPushPromiseFrame:
+			f.Truncated = true
+		default:
+			panic("not a meta frame")
 		}
-		for len(pairs) > 0 {
-			mh.Fields = append(mh.Fields, hpack.HeaderField{
-				Name:  pairs[0],
-				Value: pairs[1],
-			})
-			pairs = pairs[2:]
-		}
-		return mh
-	}
-	truncated := func(mh *MetaHeadersFrame) *MetaHeadersFrame {
-		mh.Truncated = true
-		return mh
-	}
+		return f
 
+	}
+	const flagEndHeaders Flags = 0x4 // same for all end headers flag
 	const noFlags Flags = 0
 
 	oneKBString := strings.Repeat("a", 1<<10)
@@ -913,7 +955,7 @@ func TestMetaFrameHeader(t *testing.T) {
 	tests := [...]struct {
 		name              string
 		w                 func(*Framer)
-		want              interface{} // *MetaHeaderFrame or error
+		want              interface{} // meta frame or error
 		wantErrReason     string
 		maxHeaderListSize uint32
 	}{
@@ -924,7 +966,7 @@ func TestMetaFrameHeader(t *testing.T) {
 				all := he.encodeHeaderRaw(t, ":method", "GET", ":path", "/")
 				write(f, all)
 			},
-			want: want(FlagHeadersEndHeaders, 2, ":method", "GET", ":path", "/"),
+			want: want(flagEndHeaders, 2+lengthIncrementBeyondMetaHeaderFrame, ":method", "GET", ":path", "/"),
 		},
 		1: {
 			name: "with_continuation",
@@ -933,7 +975,7 @@ func TestMetaFrameHeader(t *testing.T) {
 				all := he.encodeHeaderRaw(t, ":method", "GET", ":path", "/", "foo", "bar")
 				write(f, all[:1], all[1:])
 			},
-			want: want(noFlags, 1, ":method", "GET", ":path", "/", "foo", "bar"),
+			want: want(noFlags, 1+lengthIncrementBeyondMetaHeaderFrame, ":method", "GET", ":path", "/", "foo", "bar"),
 		},
 		2: {
 			name: "with_two_continuation",
@@ -942,7 +984,7 @@ func TestMetaFrameHeader(t *testing.T) {
 				all := he.encodeHeaderRaw(t, ":method", "GET", ":path", "/", "foo", "bar")
 				write(f, all[:2], all[2:4], all[4:])
 			},
-			want: want(noFlags, 2, ":method", "GET", ":path", "/", "foo", "bar"),
+			want: want(noFlags, 2+lengthIncrementBeyondMetaHeaderFrame, ":method", "GET", ":path", "/", "foo", "bar"),
 		},
 		3: {
 			name: "big_string_okay",
@@ -951,7 +993,7 @@ func TestMetaFrameHeader(t *testing.T) {
 				all := he.encodeHeaderRaw(t, ":method", "GET", ":path", "/", "foo", oneKBString)
 				write(f, all[:2], all[2:])
 			},
-			want: want(noFlags, 2, ":method", "GET", ":path", "/", "foo", oneKBString),
+			want: want(noFlags, 2+lengthIncrementBeyondMetaHeaderFrame, ":method", "GET", ":path", "/", "foo", oneKBString),
 		},
 		4: {
 			name: "big_string_error",
@@ -975,7 +1017,7 @@ func TestMetaFrameHeader(t *testing.T) {
 				write(f, all[:2], all[2:])
 			},
 			maxHeaderListSize: (1 << 10) / 2,
-			want: truncated(want(noFlags, 2,
+			want: truncated(want(noFlags, 2+lengthIncrementBeyondMetaHeaderFrame,
 				":method", "GET",
 				":path", "/",
 				"foo", "bar",
@@ -1039,7 +1081,7 @@ func TestMetaFrameHeader(t *testing.T) {
 		10: {
 			name: "trailer_okay_no_pseudo",
 			w:    func(f *Framer) { write(f, encodeHeaderRaw(t, "foo", "bar")) },
-			want: want(FlagHeadersEndHeaders, 8, "foo", "bar"),
+			want: want(flagEndHeaders, 8+lengthIncrementBeyondMetaHeaderFrame, "foo", "bar"),
 		},
 		11: {
 			name:          "invalid_field_name",
@@ -1080,15 +1122,7 @@ func TestMetaFrameHeader(t *testing.T) {
 			}
 		}
 		if !reflect.DeepEqual(got, tt.want) {
-			if mhg, ok := got.(*MetaHeadersFrame); ok {
-				if mhw, ok := tt.want.(*MetaHeadersFrame); ok {
-					hg := mhg.HeadersFrame
-					hw := mhw.HeadersFrame
-					if hg != nil && hw != nil && !reflect.DeepEqual(*hg, *hw) {
-						t.Errorf("%s: headers differ:\n got: %+v\nwant: %+v\n", name, *hg, *hw)
-					}
-				}
-			}
+			headersCmp(t, name, got, want)
 			str := func(v interface{}) string {
 				if _, ok := v.(error); ok {
 					return fmt.Sprintf("error %v", v)
@@ -1102,6 +1136,110 @@ func TestMetaFrameHeader(t *testing.T) {
 			t.Errorf("%s: got error reason %q; want %q", name, f.errDetail, tt.wantErrReason)
 		}
 	}
+}
+
+func TestMetaHeaderFrame(t *testing.T) {
+	write := func(f *Framer, frags ...[]byte) {
+		for i, frag := range frags {
+			end := (i == len(frags)-1)
+			if i == 0 {
+				f.WriteHeaders(HeadersFrameParam{
+					StreamID:      1,
+					BlockFragment: frag,
+					EndHeaders:    end,
+				})
+			} else {
+				f.WriteContinuation(1, end, frag)
+			}
+		}
+	}
+	want := func(flags Flags, length uint32, pairs ...string) Frame {
+		mh := &MetaHeadersFrame{
+			HeadersFrame: &HeadersFrame{
+				FrameHeader: FrameHeader{
+					Type:     FrameHeaders,
+					Flags:    flags,
+					Length:   length,
+					StreamID: 1,
+				},
+			},
+			Fields: []hpack.HeaderField(nil),
+		}
+		for len(pairs) > 0 {
+			mh.Fields = append(mh.Fields, hpack.HeaderField{
+				Name:  pairs[0],
+				Value: pairs[1],
+			})
+			pairs = pairs[2:]
+		}
+		return mh
+	}
+	headersCmp := func(t *testing.T, testName string, got, want interface{}) {
+		if mhg, ok := got.(*MetaHeadersFrame); ok {
+			if mhw, ok := want.(*MetaHeadersFrame); ok {
+				hg := mhg.HeadersFrame
+				hw := mhw.HeadersFrame
+				if hg != nil && hw != nil && !reflect.DeepEqual(*hg, *hw) {
+					t.Errorf("%s: headers differ:\n got: %+v\nwant: %+v\n", testName, *hg, *hw)
+				}
+			}
+		}
+	}
+	testMetaFrame(t, write, want, headersCmp, 0)
+}
+func TestMetaPushPromiseFrame(t *testing.T) {
+	write := func(f *Framer, frags ...[]byte) {
+		for i, frag := range frags {
+			end := (i == len(frags)-1)
+			if i == 0 {
+				err := f.WritePushPromise(PushPromiseParam{
+					StreamID:      1,
+					PromiseID:     2,
+					BlockFragment: frag,
+					EndHeaders:    end,
+				})
+				if err != nil {
+					t.Error(err)
+				}
+			} else {
+				f.WriteContinuation(1, end, frag)
+			}
+		}
+	}
+	want := func(flags Flags, length uint32, pairs ...string) Frame {
+		mh := &MetaPushPromiseFrame{
+			PushPromiseFrame: &PushPromiseFrame{
+				FrameHeader: FrameHeader{
+					Type:     FramePushPromise,
+					Flags:    flags,
+					Length:   length,
+					StreamID: 1,
+				},
+				PromiseID: 2,
+			},
+			Fields: []hpack.HeaderField(nil),
+		}
+		for len(pairs) > 0 {
+			mh.Fields = append(mh.Fields, hpack.HeaderField{
+				Name:  pairs[0],
+				Value: pairs[1],
+			})
+			pairs = pairs[2:]
+		}
+		return mh
+	}
+	headersCmp := func(t *testing.T, testName string, got, want interface{}) {
+		if mhg, ok := got.(*MetaPushPromiseFrame); ok {
+			if mhw, ok := want.(*MetaPushPromiseFrame); ok {
+				hg := mhg.PushPromiseFrame
+				hw := mhw.PushPromiseFrame
+				if hg != nil && hw != nil && !reflect.DeepEqual(*hg, *hw) {
+					t.Errorf("%s: headers differ:\n got: %+v\nwant: %+v\n", testName, *hg, *hw)
+				}
+			}
+		}
+	}
+	testMetaFrame(t, write, want, headersCmp, 4)
 }
 
 func TestSetReuseFrames(t *testing.T) {
