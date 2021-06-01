@@ -1649,6 +1649,15 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 		var didUA bool
 		var kvs []http.HeaderKeyValues
 
+		if shouldSendReqContentLength(req.Method, contentLength) {
+			req.Header.Add("content-length", strconv.FormatInt(contentLength, 10))
+		}
+
+		// Does not include accept-encoding header if its defined in req.Header
+		if _, ok := req.Header["accept-encoding"]; !ok && addGzipHeader {
+			req.Header.Add("accept-encoding", "gzip")
+		}
+
 		if headerOrder, ok := req.Header[http.HeaderOrderKey]; ok {
 			order := make(map[string]int)
 			for i, v := range headerOrder {
@@ -1716,15 +1725,6 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 			for _, v := range kv.Values {
 				f(kv.Key, v)
 			}
-		}
-
-		if shouldSendReqContentLength(req.Method, contentLength) {
-			f("content-length", strconv.FormatInt(contentLength, 10))
-		}
-
-		// Does not include accept-encoding header if its defined in req.Header
-		if addGzipHeader {
-			f("accept-encoding", "gzip")
 		}
 
 		if !didUA {
