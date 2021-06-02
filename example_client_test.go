@@ -321,11 +321,6 @@ func TestCompressionZlibDeflate(t *testing.T) {
 		ForceAttemptHTTP2: true,
 	}
 	addCharlesToTransport(t1, "http://localhost:8888")
-	t2, err := http2.ConfigureTransports(t1)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	t1.H2transport = t2
 	c := http.Client{
 		Transport: t1,
 	}
