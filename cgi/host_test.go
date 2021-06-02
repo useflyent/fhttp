@@ -12,8 +12,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
-	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +21,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	http "github.com/zMrKrabz/fhttp"
+	"github.com/zMrKrabz/fhttp/httptest"
 )
 
 func newRequest(httpreq string) *http.Request {

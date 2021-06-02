@@ -138,7 +138,7 @@ func TestWithCert(t *testing.T) {
 		Transport: h1t,
 	}
 
-	req, err := http.NewRequest("GET", "https://httpbin.org/headers", nil)
+	req, err := http.NewRequest("GET", "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding", nil)
 
 	if err != nil {
 		t.Errorf(err.Error())
@@ -175,7 +175,6 @@ func TestWithCert(t *testing.T) {
 	}
 
 	resp, err := client.Do(req)
-
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -184,11 +183,6 @@ func TestWithCert(t *testing.T) {
 
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected status code 200, got %v", resp.StatusCode)
-	}
-
-	var data interface{}
-	if err = json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		t.Error(err.Error())
 	}
 }
 
@@ -269,7 +263,7 @@ func TestFinishLine(t *testing.T) {
 		"sec-fetch-mode":            {"navigate"},
 		"sec-fetch-user":            {"?1"},
 		"sec-fetch-dest":            {"document"},
-		"accept-encoding":           {"gzip"},
+		"accept-encoding":           {"gzip, deflate, br"},
 		http.HeaderOrderKey: {
 			"sec-ch-ua",
 			"sec-ch-ua-mobile",
@@ -297,6 +291,67 @@ func TestFinishLine(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	fmt.Printf("resp: %v\n", string(b)[1])
+}
+
+// Test compression brotli
+func TestCompressionBrotli(t *testing.T) {
+	t1 := &http.Transport{
+		ForceAttemptHTTP2: true,
+	}
+	c := http.Client{
+		Transport: t1,
+	}
+	req, _ := http.NewRequest("GET", "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding", nil)
+	req.Header = http.Header{
+		"accept-encoding": {"br"},
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	if h := resp.Header.Get("content-encoding"); h == "" || h != "br" {
+		t.Fatalf("Got content-encoding header %v, expected br", h)
+	}
+}
+
+// Test compression zlib deflate
+func TestCompressionZlibDeflate(t *testing.T) {
+	t1 := &http.Transport{
+		ForceAttemptHTTP2: true,
+	}
+	addCharlesToTransport(t1, "http://localhost:8888")
+	c := http.Client{
+		Transport: t1,
+	}
+	req, _ := http.NewRequest("GET", "http://carsten.codimi.de/gzip.yaws/daniels.html?deflate=on&zlib=on", nil)
+	req.Header = http.Header{
+		"accept-encoding": {"deflate"},
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	if h := resp.Header.Get("content-encoding"); h == "" || h != "deflate" {
+		t.Fatalf("Expected content encoding deflate, got %v", h)
+	}
+}
+
+// Test compression deflate
+func TestCompressionDeflate(t *testing.T) {
+	c := http.Client{}
+	req, _ := http.NewRequest("GET", "http://carsten.codimi.de/gzip.yaws/daniels.html?deflate=on", nil)
+	req.Header = http.Header{
+		"accept-encoding": {"deflate"},
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	if h := resp.Header.Get("content-encoding"); h == "" || h != "deflate" {
+		t.Fatalf("Expected content encoding deflate, got %v", h)
+	}
 }
 
 // Test with cookies

@@ -9,9 +9,9 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"net/http"
 	"testing"
 
+	http "github.com/zMrKrabz/fhttp"
 	"github.com/zMrKrabz/fhttp/http2"
 )
 

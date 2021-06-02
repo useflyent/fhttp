@@ -2542,6 +2542,7 @@ func (pc *persistConn) roundTrip(req *transportRequest) (resp *Response, err err
 	requestedGzip := false
 	if !pc.t.DisableCompression &&
 		req.Header.Get("Accept-Encoding") == "" &&
+		req.Header.get("accept-encoding") == "" &&
 		req.Header.Get("Range") == "" &&
 		req.Method != "HEAD" {
 		// Request gzip only, not deflate. Deflate is ambiguous and
