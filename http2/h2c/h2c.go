@@ -18,11 +18,11 @@ import (
 	"io"
 	"log"
 	"net"
-	"net/http"
 	"net/textproto"
 	"os"
 	"strings"
 
+	http "github.com/zMrKrabz/fhttp"
 	"github.com/zMrKrabz/fhttp/http2"
 	"github.com/zMrKrabz/fhttp/http2/hpack"
 	"golang.org/x/net/http/httpguts"

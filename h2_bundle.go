@@ -26,7 +26,9 @@ package http
 import (
 	"bufio"
 	"bytes"
+	"compress/flate"
 	"compress/gzip"
+	"compress/zlib"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
@@ -51,6 +53,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/andybalholm/brotli"
 	"github.com/zMrKrabz/fhttp/http2/hpack"
 	"github.com/zMrKrabz/fhttp/httptrace"
 	"golang.org/x/net/http/httpguts"
@@ -3791,6 +3794,7 @@ func (pr *http2PushedRequest) ReadResponse(ctx context.Context) (*Response, erro
 		return nil, pr.pushedStream.resetErr
 	case resErr := <-pr.pushedStream.resc:
 		if resErr.err != nil {
+			fmt.Println(resErr.err.Error())
 			pr.Cancel()
 			pr.pushedStream.bufPipe.CloseWithError(resErr.err)
 			return nil, resErr.err
@@ -7169,7 +7173,7 @@ func (cs *http2clientStream) cancelStream() {
 	cs.didReset = true
 	cc.mu.Unlock()
 
-	if !didReset {
+	if didReset {
 		cc.writeStreamReset(cs.ID, http2ErrCodeCancel, nil)
 		cc.forgetStreamID(cs.ID)
 	}
@@ -8426,6 +8430,15 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 		var didUA bool
 		var kvs []HeaderKeyValues
 
+		if http2shouldSendReqContentLength(req.Method, contentLength) {
+			req.Header.Add("content-length", strconv.FormatInt(contentLength, 10))
+		}
+
+		// Does not include accept-encoding header if its defined in req.Header
+		if _, ok := req.Header["accept-encoding"]; !ok && addGzipHeader {
+			req.Header.Add("accept-encoding", "gzip")
+		}
+
 		if headerOrder, ok := req.Header[HeaderOrderKey]; ok {
 			order := make(map[string]int)
 			for i, v := range headerOrder {
@@ -8493,15 +8506,6 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 			for _, v := range kv.Values {
 				f(kv.Key, v)
 			}
-		}
-
-		if http2shouldSendReqContentLength(req.Method, contentLength) {
-			f("content-length", strconv.FormatInt(contentLength, 10))
-		}
-
-		// Does not include accept-encoding header if its defined in req.Header
-		if addGzipHeader {
-			f("accept-encoding", "gzip")
 		}
 
 		if !didUA {
@@ -8980,14 +8984,29 @@ func (rl *http2clientConnReadLoop) handleResponse(cs *http2clientStream, f *http
 	res.Body = http2transportResponseBody{cs}
 	go cs.awaitRequestCancel(cs.req)
 
-	if cs.requestedGzip && res.Header.Get("Content-Encoding") == "gzip" {
-		res.Header.Del("Content-Encoding")
-		res.Header.Del("Content-Length")
-		res.ContentLength = -1
-		res.Body = &http2gzipReader{body: res.Body}
-		res.Uncompressed = true
-	}
+	res.Body = http2DecompressBody(res)
 	return res, nil
+}
+
+func http2DecompressBody(res *Response) io.ReadCloser {
+	ce := res.Header.Get("Content-Encoding")
+	res.ContentLength = -1
+	res.Uncompressed = true
+
+	switch ce {
+	case "gzip":
+		return &http2gzipReader{
+			body: res.Body,
+		}
+	case "br":
+		return &http2brReader{
+			body: res.Body,
+		}
+	case "deflate":
+		return http2identifyDeflate(res.Body)
+	default:
+		return res.Body
+	}
 }
 
 func (rl *http2clientConnReadLoop) processTrailers(cs *http2clientStream, f *http2MetaHeadersFrame) error {
@@ -9504,6 +9523,7 @@ func (cc *http2ClientConn) writeStreamReset(streamID uint32, code http2ErrCode, 
 	// RST_STREAM there's no equivalent to GOAWAY frame's debug
 	// data, and the error codes are all pretty vague ("cancel").
 	cc.wmu.Lock()
+	fmt.Printf("reset err %v StreamID: %v\n", code, streamID)
 	cc.fr.WriteRSTStream(streamID, code)
 	cc.bw.Flush()
 	cc.wmu.Unlock()
@@ -9574,6 +9594,113 @@ func (gz *http2gzipReader) Read(p []byte) (n int, err error) {
 
 func (gz *http2gzipReader) Close() error {
 	return gz.body.Close()
+}
+
+// brReader lazily wraps a response body into an
+// io.ReadCloser, will call gzip.NewReader on first
+// call to read
+type http2brReader struct {
+	_    http2incomparable
+	body io.ReadCloser
+	zr   *brotli.Reader
+	zerr error
+}
+
+func (br *http2brReader) Read(p []byte) (n int, err error) {
+	if br.zerr != nil {
+		return 0, br.zerr
+	}
+	if br.zr == nil {
+		br.zr = brotli.NewReader(br.body)
+	}
+	return br.zr.Read(p)
+}
+
+func (br *http2brReader) Close() error {
+	return br.body.Close()
+}
+
+type http2zlibDeflateReader struct {
+	_    http2incomparable
+	body io.ReadCloser
+	zr   io.ReadCloser
+	err  error
+}
+
+func (z *http2zlibDeflateReader) Read(p []byte) (n int, err error) {
+	if z.err != nil {
+		return 0, z.err
+	}
+	if z.zr == nil {
+		z.zr, err = zlib.NewReader(z.body)
+		if err != nil {
+			z.err = err
+			return 0, z.err
+		}
+	}
+	return z.zr.Read(p)
+}
+
+func (z *http2zlibDeflateReader) Close() error {
+	return z.zr.Close()
+}
+
+type http2deflateReader struct {
+	_    http2incomparable
+	body io.ReadCloser
+	r    io.ReadCloser
+	err  error
+}
+
+func (dr *http2deflateReader) Read(p []byte) (n int, err error) {
+	if dr.err != nil {
+		return 0, dr.err
+	}
+	if dr.r == nil {
+		dr.r = flate.NewReader(dr.body)
+	}
+	return dr.r.Read(p)
+}
+
+func (dr *http2deflateReader) Close() error {
+	return dr.r.Close()
+}
+
+const (
+	http2zlibMethodDeflate = 0x78
+	http2zlibLevelDefault  = 0x9C
+	http2zlibLevelLow      = 0x01
+	http2zlibLevelMedium   = 0x5E
+	http2zlibLevelBest     = 0xDA
+)
+
+func http2identifyDeflate(body io.ReadCloser) io.ReadCloser {
+	var header [2]byte
+	_, err := io.ReadFull(body, header[:])
+	if err != nil {
+		return body
+	}
+
+	if header[0] == http2zlibMethodDeflate &&
+		(header[1] == http2zlibLevelDefault || header[1] == http2zlibLevelLow || header[1] == http2zlibLevelMedium || header[1] == http2zlibLevelBest) {
+		return &http2zlibDeflateReader{
+			body: http2prependBytesToReadCloser(header[:], body),
+		}
+	} else if header[0] == http2zlibMethodDeflate {
+		return &http2deflateReader{
+			body: http2prependBytesToReadCloser(header[:], body),
+		}
+	}
+	return body
+}
+
+func http2prependBytesToReadCloser(b []byte, r io.ReadCloser) io.ReadCloser {
+	w := new(bytes.Buffer)
+	w.Write(b)
+	io.Copy(w, r)
+	defer r.Close()
+
+	return io.NopCloser(w)
 }
 
 type http2errorReader struct{ err error }
