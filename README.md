@@ -1,7 +1,7 @@
 # fhttp 
 
 **NOTE**
-This maintenance of this library has move over to [userflynet](https://github.com/useflyent/fhttp). The only use for this repository is so imports will not break.
+This maintenance of this library has move over to [useflyent](https://github.com/useflyent/fhttp). The only use for this repository is so imports will not break.
 
 The f stands for flex. fhttp is a fork of net/http that provides an array of features pertaining to the fingerprint of the golang http client. Through these changes, the http client becomes much more flexible, and when combined with transports such as [uTLS](https://github.com/refraction-networking/utls) can mitigate servers from fingerprinting requests and see that it is made by golang, making them look like they originate from a regular chrome browser.
 
