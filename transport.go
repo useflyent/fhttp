@@ -281,10 +281,6 @@ type Transport struct {
 	// To use a custom dialer or TLS config and still attempt HTTP/2
 	// upgrades, set this to true.
 	ForceAttemptHTTP2 bool
-
-	// optional pre configured http2 transport. If nil and using http2,
-	// h1 transport will configure own http2 transport
-	Http2Transport *http2Transport
 }
 
 // A cancelKey is the Key of the reqCanceler map.
@@ -404,7 +400,7 @@ func (t *Transport) onceSetNextProtoDefaults() {
 	if t.H2transport == nil {
 		t2, err := http2configureTransports(t)
 		if err != nil {
-			log.Printf("Error enabling Transport HTTP/2 support: %v", err)
+			log.Printf("error enabling Transport HTTP/2 support: %v", err)
 			return
 		}
 		t.H2transport = t2
@@ -510,12 +506,10 @@ func (t *Transport) roundTrip(req *Request) (*Response, error) {
 	if isHTTP {
 		for k, vv := range req.Header {
 			if !httpguts.ValidHeaderFieldName(k) {
-
 				// Allow the HeaderOrderKey and PHeaderOrderKey magic string, this will be handled further.
 				if k == HeaderOrderKey || k == PHeaderOrderKey {
 					continue
 				}
-
 				req.closeBody()
 				return nil, fmt.Errorf("net/http: invalid header field name %q", k)
 			}
@@ -565,6 +559,8 @@ func (t *Transport) roundTrip(req *Request) (*Response, error) {
 
 		// treq gets modified by roundTrip, so we need to recreate for each retry.
 		treq := &transportRequest{Request: req, trace: trace, cancelKey: cancelKey}
+
+		// Creates CONNECT method, is method to add proxy connection to req
 		cm, err := t.connectMethodForRequest(treq)
 		if err != nil {
 			req.closeBody()
