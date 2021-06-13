@@ -12,7 +12,7 @@ import (
 	"net/textproto"
 	"sync"
 
-	http "github.com/zMrKrabz/fhttp"
+	http "github.com/useflyent/fhttp"
 )
 
 var (

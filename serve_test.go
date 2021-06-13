@@ -36,11 +36,11 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/zMrKrabz/fhttp"
-	"github.com/zMrKrabz/fhttp/httptest"
-	"github.com/zMrKrabz/fhttp/httputil"
-	"github.com/zMrKrabz/fhttp/internal"
-	"github.com/zMrKrabz/fhttp/internal/testenv"
+	. "github.com/useflyent/fhttp"
+	"github.com/useflyent/fhttp/httptest"
+	"github.com/useflyent/fhttp/httputil"
+	"github.com/useflyent/fhttp/internal"
+	"github.com/useflyent/fhttp/internal/testenv"
 )
 
 type dummyAddr string

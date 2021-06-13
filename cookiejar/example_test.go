@@ -9,9 +9,9 @@ import (
 	"log"
 	"net/url"
 
-	http "github.com/zMrKrabz/fhttp"
-	"github.com/zMrKrabz/fhttp/cookiejar"
-	"github.com/zMrKrabz/fhttp/httptest"
+	http "github.com/useflyent/fhttp"
+	"github.com/useflyent/fhttp/cookiejar"
+	"github.com/useflyent/fhttp/httptest"
 )
 
 func ExampleNew() {

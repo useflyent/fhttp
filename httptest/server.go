@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	http "github.com/zMrKrabz/fhttp"
-	"github.com/zMrKrabz/fhttp/internal"
+	http "github.com/useflyent/fhttp"
+	"github.com/useflyent/fhttp/internal"
 )
 
 // A Server is an HTTP server listening on a system-chosen port on the

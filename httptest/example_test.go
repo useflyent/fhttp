@@ -9,8 +9,8 @@ import (
 	"io"
 	"log"
 
-	http "github.com/zMrKrabz/fhttp"
-	"github.com/zMrKrabz/fhttp/httptest"
+	http "github.com/useflyent/fhttp"
+	"github.com/useflyent/fhttp/httptest"
 )
 
 func ExampleResponseRecorder() {

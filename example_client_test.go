@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	http "github.com/zMrKrabz/fhttp"
-	"github.com/zMrKrabz/fhttp/http2"
+	http "github.com/useflyent/fhttp"
+	"github.com/useflyent/fhttp/http2"
 )
 
 // Basic http test with Header Order + enable push

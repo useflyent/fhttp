@@ -11,13 +11,14 @@ import (
 	"expvar"
 	"flag"
 	"fmt"
-	http "github.com/zMrKrabz/fhttp"
 	"io"
 	"log"
 	"os"
 	"os/exec"
 	"strconv"
 	"sync"
+
+	http "github.com/useflyent/fhttp"
 )
 
 // hello world, the web server

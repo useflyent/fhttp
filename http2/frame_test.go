@@ -13,7 +13,7 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/zMrKrabz/fhttp/http2/hpack"
+	"github.com/useflyent/fhttp/http2/hpack"
 )
 
 func testFramer() (*Framer, *bytes.Buffer) {

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	http "github.com/zMrKrabz/fhttp"
-	"github.com/zMrKrabz/fhttp/http2"
-	"github.com/zMrKrabz/fhttp/httptrace"
+	http "github.com/useflyent/fhttp"
+	"github.com/useflyent/fhttp/http2"
+	"github.com/useflyent/fhttp/httptrace"
 )
 
 func TestHeaderOrder(t *testing.T) {

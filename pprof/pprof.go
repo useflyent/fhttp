@@ -74,8 +74,8 @@ import (
 	"strings"
 	"time"
 
-	http "github.com/zMrKrabz/fhttp"
-	"github.com/zMrKrabz/fhttp/internal/profile"
+	http "github.com/useflyent/fhttp"
+	"github.com/useflyent/fhttp/internal/profile"
 )
 
 func init() {

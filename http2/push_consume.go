@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"net/url"
 
-	http "github.com/zMrKrabz/fhttp"
+	http "github.com/useflyent/fhttp"
 )
 
 var (

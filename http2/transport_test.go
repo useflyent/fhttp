@@ -32,10 +32,10 @@ import (
 	"testing"
 	"time"
 
-	http "github.com/zMrKrabz/fhttp"
-	"github.com/zMrKrabz/fhttp/http2/hpack"
-	"github.com/zMrKrabz/fhttp/httptest"
-	"github.com/zMrKrabz/fhttp/httptrace"
+	http "github.com/useflyent/fhttp"
+	"github.com/useflyent/fhttp/http2/hpack"
+	"github.com/useflyent/fhttp/httptest"
+	"github.com/useflyent/fhttp/httptrace"
 )
 
 var (
