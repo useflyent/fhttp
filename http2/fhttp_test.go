@@ -130,15 +130,17 @@ func TestRoundTrip(t *testing.T) {
 // Tests if content-length header is present in request headers during POST
 func TestContentLength(t *testing.T) {
 	ts := httptest.NewUnstartedServer(http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
-		hdr := r.Header.Get("content-length")
-		if hdr == "" {
-			for name, values := range r.Header {
-				log.Printf("%v: %v", name, values)
+		if hdr, ok := r.Header["Content-Length"]; ok {
+			if len(hdr) != 1 {
+				t.Fatalf("Got %v content-length headers, should only be 1", len(hdr))
 			}
-			t.Fatalf("Got these headers but no content-length.\nProto: %v", r.Proto)
+			return
 		}
 		log.Printf("Proto: %v", r.Proto)
-		log.Printf("content-length, %v", hdr)
+		for name, value := range r.Header {
+			log.Printf("%v: %v", name, value)
+		}
+		t.Fatalf("Could not find content-length header")
 	}))
 	ts.EnableHTTP2 = true
 	ts.StartTLS()

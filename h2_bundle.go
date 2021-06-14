@@ -8425,26 +8425,29 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 			f("trailer", trailers)
 		}
 
+		// Should clone, because this function is called twice; to read and to write.
+		// If headers are added to the req, then headers would be added twice.
+		hdrs := req.Header.Clone()
 		if http2shouldSendReqContentLength(req.Method, contentLength) {
-			req.Header.Add("content-length", strconv.FormatInt(contentLength, 10))
+			hdrs.Add("content-length", strconv.FormatInt(contentLength, 10))
 		}
 		// Does not include accept-encoding header if its defined in req.Header
 		if _, ok := req.Header["accept-encoding"]; !ok && addGzipHeader {
-			req.Header.Add("accept-encoding", "gzip")
+			hdrs.Add("accept-encoding", "gzip, deflate, br")
 		}
 
 		// Formats and writes headers with f function
 		var didUA bool
 		var kvs []HeaderKeyValues
 
-		if headerOrder, ok := req.Header[HeaderOrderKey]; ok {
+		if headerOrder, ok := hdrs[HeaderOrderKey]; ok {
 			order := make(map[string]int)
 			for i, v := range headerOrder {
 				order[v] = i
 			}
-			kvs, _ = req.Header.SortedKeyValuesBy(order, make(map[string]bool))
+			kvs, _ = hdrs.SortedKeyValuesBy(order, make(map[string]bool))
 		} else {
-			kvs, _ = req.Header.SortedKeyValues(make(map[string]bool))
+			kvs, _ = hdrs.SortedKeyValues(make(map[string]bool))
 		}
 
 		for _, kv := range kvs {
