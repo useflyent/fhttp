@@ -8363,7 +8363,6 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 	// continue to reuse the hpack encoder for future requests)
 	for k, vv := range req.Header {
 		if !httpguts.ValidHeaderFieldName(k) {
-
 			// If the header is magic key, the headers would have been ordered
 			// by this step. It is ok to delete and not raise an error
 			if k == HeaderOrderKey || k == PHeaderOrderKey {
@@ -8426,34 +8425,31 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 			f("trailer", trailers)
 		}
 
-		// Formats and writes headers with f function
-		var didUA bool
-		var kvs []HeaderKeyValues
-
 		if http2shouldSendReqContentLength(req.Method, contentLength) {
 			req.Header.Add("content-length", strconv.FormatInt(contentLength, 10))
 		}
-
 		// Does not include accept-encoding header if its defined in req.Header
 		if _, ok := req.Header["accept-encoding"]; !ok && addGzipHeader {
 			req.Header.Add("accept-encoding", "gzip")
 		}
+
+		// Formats and writes headers with f function
+		var didUA bool
+		var kvs []HeaderKeyValues
 
 		if headerOrder, ok := req.Header[HeaderOrderKey]; ok {
 			order := make(map[string]int)
 			for i, v := range headerOrder {
 				order[v] = i
 			}
-
 			kvs, _ = req.Header.SortedKeyValuesBy(order, make(map[string]bool))
 		} else {
 			kvs, _ = req.Header.SortedKeyValues(make(map[string]bool))
 		}
 
 		for _, kv := range kvs {
-			if strings.EqualFold(kv.Key, "host") || strings.EqualFold(kv.Key, "content-length") {
+			if strings.EqualFold(kv.Key, "host") {
 				// Host is :authority, already sent.
-				// Content-Length is automatic, set below.
 				continue
 			} else if strings.EqualFold(kv.Key, "connection") || strings.EqualFold(kv.Key, "proxy-connection") ||
 				strings.EqualFold(kv.Key, "transfer-encoding") || strings.EqualFold(kv.Key, "upgrade") ||

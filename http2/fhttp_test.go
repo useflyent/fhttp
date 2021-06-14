@@ -4,6 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/useflyent/fhttp/cookiejar"
+	"github.com/useflyent/fhttp/httptest"
+	"golang.org/x/net/publicsuffix"
+	"log"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -120,4 +125,73 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	tr.RoundTrip(req)
+}
+
+// Tests if content-length header is present in request headers during POST
+func TestContentLength(t *testing.T) {
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
+		hdr := r.Header.Get("content-length")
+		if hdr == "" {
+			for name, values := range r.Header {
+				log.Printf("%v: %v", name, values)
+			}
+			t.Fatalf("Got these headers but no content-length.\nProto: %v", r.Proto)
+		}
+		log.Printf("Proto: %v", r.Proto)
+		log.Printf("content-length, %v", hdr)
+	}))
+	ts.EnableHTTP2 = true
+	ts.StartTLS()
+	defer ts.Close()
+
+	u := ts.URL
+	form := url.Values{}
+	form.Add("Hello", "World")
+	req, err := http.NewRequest("POST", u, strings.NewReader(form.Encode()))
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	req.Header.Add("user-agent", "Go Testing")
+
+	resp, err := ts.Client().Do(req)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	defer resp.Body.Close()
+}
+
+// TestClient_Cookies tests whether set cookies are being sent
+func TestClient_SendsCookies(t *testing.T) {
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("cookie")
+		if err != nil {
+			t.Fatalf(err.Error())
+		}
+		if cookie.Value == "" {
+			t.Fatalf("Cookie value is empty")
+		}
+	}))
+	ts.EnableHTTP2 = true
+	ts.StartTLS()
+	defer ts.Close()
+	c := ts.Client()
+	jar, err := cookiejar.New(&cookiejar.Options{
+		PublicSuffixList: publicsuffix.List,
+	})
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	c.Jar = jar
+	ur := ts.URL
+	u, err := url.Parse(ur)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	cookies := []*http.Cookie{{Name: "cookie", Value: "Hello world"}}
+	jar.SetCookies(u, cookies)
+	resp, err := c.Get(ur)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	defer resp.Body.Close()
 }
