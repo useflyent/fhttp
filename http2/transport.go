@@ -1586,7 +1586,6 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 	// continue to reuse the hpack encoder for future requests)
 	for k, vv := range req.Header {
 		if !httpguts.ValidHeaderFieldName(k) {
-
 			// If the header is magic key, the headers would have been ordered
 			// by this step. It is ok to delete and not raise an error
 			if k == http.HeaderOrderKey || k == http.PHeaderOrderKey {
@@ -1649,34 +1648,34 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 			f("trailer", trailers)
 		}
 
+		// Should clone, because this function is called twice; to read and to write.
+		// If headers are added to the req, then headers would be added twice.
+		hdrs := req.Header.Clone()
+		if shouldSendReqContentLength(req.Method, contentLength) {
+			hdrs.Add("content-length", strconv.FormatInt(contentLength, 10))
+		}
+		// Does not include accept-encoding header if its defined in req.Header
+		if _, ok := req.Header["accept-encoding"]; !ok && addGzipHeader {
+			hdrs.Add("accept-encoding", "gzip, deflate, br")
+		}
+
 		// Formats and writes headers with f function
 		var didUA bool
 		var kvs []http.HeaderKeyValues
 
-		if shouldSendReqContentLength(req.Method, contentLength) {
-			req.Header.Add("content-length", strconv.FormatInt(contentLength, 10))
-		}
-
-		// Does not include accept-encoding header if its defined in req.Header
-		if _, ok := req.Header["accept-encoding"]; !ok && addGzipHeader {
-			req.Header.Add("accept-encoding", "gzip")
-		}
-
-		if headerOrder, ok := req.Header[http.HeaderOrderKey]; ok {
+		if headerOrder, ok := hdrs[http.HeaderOrderKey]; ok {
 			order := make(map[string]int)
 			for i, v := range headerOrder {
 				order[v] = i
 			}
-
-			kvs, _ = req.Header.SortedKeyValuesBy(order, make(map[string]bool))
+			kvs, _ = hdrs.SortedKeyValuesBy(order, make(map[string]bool))
 		} else {
-			kvs, _ = req.Header.SortedKeyValues(make(map[string]bool))
+			kvs, _ = hdrs.SortedKeyValues(make(map[string]bool))
 		}
 
 		for _, kv := range kvs {
-			if strings.EqualFold(kv.Key, "host") || strings.EqualFold(kv.Key, "content-length") {
+			if strings.EqualFold(kv.Key, "host")  {
 				// Host is :authority, already sent.
-				// Content-Length is automatic, set below.
 				continue
 			} else if strings.EqualFold(kv.Key, "connection") || strings.EqualFold(kv.Key, "proxy-connection") ||
 				strings.EqualFold(kv.Key, "transfer-encoding") || strings.EqualFold(kv.Key, "upgrade") ||

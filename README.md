@@ -1,20 +1,26 @@
-# fhttp 
+# fhttp
 
+<!-- This note is not necessary on this repo, but I won't delete it as it should be included on the original one.
 **NOTE**
-This maintenance of this library has move over to [useflyent](https://github.com/useflyent/fhttp). The only use for this repository is so imports will not break.
 
-The f stands for flex. fhttp is a fork of net/http that provides an array of features pertaining to the fingerprint of the golang http client. Through these changes, the http client becomes much more flexible, and when combined with transports such as [uTLS](https://github.com/refraction-networking/utls) can mitigate servers from fingerprinting requests and see that it is made by golang, making them look like they originate from a regular chrome browser.
+This maintenance of this library has moved over to [useflyent](https://github.com/useflyent/fhttp). The only use for this repository is so imports will not break.
+
+The "f" stands for "fly" *(or "flex")*. fhttp is a fork of `net/http` that provides an array of features pertaining to the fingerprint of the golang `http` client. Through these changes, the `http` client becomes much more flexible, and when combined with transports such as [uTLS](https://github.com/refraction-networking/utls) it can mitigate fingerprinting requests, reducing the chances that a server detects they were made by a golang program, instead having them appear to originate from a regular Chrome browser.
 
 Documentation can be contributed, otherwise, look at tests and examples. The main one should be [example_client_test.go](example_client_test.go).
+-->
 
-# Features
+## Features
 
-## Ordered Headers
-Allows for pseudo header order and normal header order. Most of the code is taken from [this pr](https://go-review.googlesource.com/c/go/+/105755/).
+### Ordered Headers
 
-## Connection settings
-Has Chrome-like connection settings:
-```
+The package allows for both pseudo header order and normal header order. Most of the code is taken from [this Pull Request](https://go-review.googlesource.com/c/go/+/105755/).
+
+### Connection settings
+
+fhhtp has Chrome-like connection settings, as shown below:
+
+```text
 SETTINGS_HEADER_TABLE_SIZE = 65536 (2^16)
 SETTINGS_ENABLE_PUSH = 1
 SETTINGS_MAX_CONCURRENT_STREAMS = 1000
@@ -23,8 +29,9 @@ SETTINGS_MAX_FRAME_SIZE = 16384 (2^14)
 SETTINGS_MAX_HEADER_LIST_SIZE = 262144 (2^18)
 ```
 
-Default net/http settings:
-```
+The default net/http settings, on the other hand, are the following:
+
+```text
 SETTINGS_HEADER_TABLE_SIZE = 4096
 SETTINGS_ENABLE_PUSH = 0
 SETTINGS_MAX_CONCURRENT_STREAMS = unlimited
@@ -33,20 +40,23 @@ SETTINGS_MAX_FRAME_SIZE = 16384
 SETTINGS_MAX_HEADER_LIST_SIZE = 10485760
 ```
 
-ENABLE_PUSH implementation was merged from [this pull request](https://go-review.googlesource.com/c/net/+/181497/)
+The ENABLE_PUSH implementation was merged from [this Pull Request](https://go-review.googlesource.com/c/net/+/181497/).
 
-## gzip, deflate, br encoding 
-Actually supports and implements encoding `gzip, deflate, br`
+### gzip, deflate, and br encoding
 
-## Pseudo header order
-Supports pseudo header order for http2 to mitigate fingerprinting. Read more about it [here](https://www.akamai.com/uk/en/multimedia/documents/white-paper/passive-fingerprinting-of-http2-clients-white-paper.pdf)
+`gzip`, `deflate`, and `br` encoding are all supported by the package.
 
-## Backward compatible with net/http
+### Pseudo header order
+
+fhttp supports pseudo header order for http2, helping mitigate fingerprinting. You can read more about how it works [here](https://www.akamai.com/uk/en/multimedia/documents/white-paper/passive-fingerprinting-of-http2-clients-white-paper.pdf).
+
+### Backward compatible with net/http
+
 Although this library is an extension of `net/http`, it is also meant to be backward compatible. Replacing
 
 ```go
 import (
-	"net/http"
+   "net/http"
 )
 ```
 
@@ -54,13 +64,14 @@ with
 
 ```go
 import (
-	http "github.com/useflyent/fhttp"
+    http "github.com/useflyent/fhttp"
 )
 ```
 
-SHOULD not break anything. 
+SHOULD not break anything.
 
-# Credits
+## Credits
+
 Special thanks to the following people for helping me with this project.
 
 * [cc](https://github.com/x04/) for guiding me when I first started this project and inspiring me with [cclient](https://github.com/x04/cclient)
