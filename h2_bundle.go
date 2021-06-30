@@ -26,9 +26,6 @@ package http
 import (
 	"bufio"
 	"bytes"
-	"compress/flate"
-	"compress/gzip"
-	"compress/zlib"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
@@ -53,7 +50,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/andybalholm/brotli"
 	"github.com/useflyent/fhttp/http2/hpack"
 	"github.com/useflyent/fhttp/httptrace"
 	"golang.org/x/net/http/httpguts"
@@ -8983,29 +8979,8 @@ func (rl *http2clientConnReadLoop) handleResponse(cs *http2clientStream, f *http
 	res.Body = http2transportResponseBody{cs}
 	go cs.awaitRequestCancel(cs.req)
 
-	res.Body = http2DecompressBody(res)
+	res.Body = DecompressBody(res)
 	return res, nil
-}
-
-func http2DecompressBody(res *Response) io.ReadCloser {
-	ce := res.Header.Get("Content-Encoding")
-	res.ContentLength = -1
-	res.Uncompressed = true
-
-	switch ce {
-	case "gzip":
-		return &http2gzipReader{
-			body: res.Body,
-		}
-	case "br":
-		return &http2brReader{
-			body: res.Body,
-		}
-	case "deflate":
-		return http2identifyDeflate(res.Body)
-	default:
-		return res.Body
-	}
 }
 
 func (rl *http2clientConnReadLoop) processTrailers(cs *http2clientStream, f *http2MetaHeadersFrame) error {
@@ -9567,140 +9542,6 @@ type http2erringRoundTripper struct{ err error }
 func (rt http2erringRoundTripper) RoundTripErr() error { return rt.err }
 
 func (rt http2erringRoundTripper) RoundTrip(*Request) (*Response, error) { return nil, rt.err }
-
-// gzipReader wraps a response body so it can lazily
-// call gzip.NewReader on the first call to Read
-type http2gzipReader struct {
-	_    http2incomparable
-	body io.ReadCloser // underlying Response.Body
-	zr   *gzip.Reader  // lazily-initialized gzip reader
-	zerr error         // sticky error
-}
-
-func (gz *http2gzipReader) Read(p []byte) (n int, err error) {
-	if gz.zerr != nil {
-		return 0, gz.zerr
-	}
-	if gz.zr == nil {
-		gz.zr, err = gzip.NewReader(gz.body)
-		if err != nil {
-			gz.zerr = err
-			return 0, err
-		}
-	}
-	return gz.zr.Read(p)
-}
-
-func (gz *http2gzipReader) Close() error {
-	return gz.body.Close()
-}
-
-// brReader lazily wraps a response body into an
-// io.ReadCloser, will call gzip.NewReader on first
-// call to read
-type http2brReader struct {
-	_    http2incomparable
-	body io.ReadCloser
-	zr   *brotli.Reader
-	zerr error
-}
-
-func (br *http2brReader) Read(p []byte) (n int, err error) {
-	if br.zerr != nil {
-		return 0, br.zerr
-	}
-	if br.zr == nil {
-		br.zr = brotli.NewReader(br.body)
-	}
-	return br.zr.Read(p)
-}
-
-func (br *http2brReader) Close() error {
-	return br.body.Close()
-}
-
-type http2zlibDeflateReader struct {
-	_    http2incomparable
-	body io.ReadCloser
-	zr   io.ReadCloser
-	err  error
-}
-
-func (z *http2zlibDeflateReader) Read(p []byte) (n int, err error) {
-	if z.err != nil {
-		return 0, z.err
-	}
-	if z.zr == nil {
-		z.zr, err = zlib.NewReader(z.body)
-		if err != nil {
-			z.err = err
-			return 0, z.err
-		}
-	}
-	return z.zr.Read(p)
-}
-
-func (z *http2zlibDeflateReader) Close() error {
-	return z.zr.Close()
-}
-
-type http2deflateReader struct {
-	_    http2incomparable
-	body io.ReadCloser
-	r    io.ReadCloser
-	err  error
-}
-
-func (dr *http2deflateReader) Read(p []byte) (n int, err error) {
-	if dr.err != nil {
-		return 0, dr.err
-	}
-	if dr.r == nil {
-		dr.r = flate.NewReader(dr.body)
-	}
-	return dr.r.Read(p)
-}
-
-func (dr *http2deflateReader) Close() error {
-	return dr.r.Close()
-}
-
-const (
-	http2zlibMethodDeflate = 0x78
-	http2zlibLevelDefault  = 0x9C
-	http2zlibLevelLow      = 0x01
-	http2zlibLevelMedium   = 0x5E
-	http2zlibLevelBest     = 0xDA
-)
-
-func http2identifyDeflate(body io.ReadCloser) io.ReadCloser {
-	var header [2]byte
-	_, err := io.ReadFull(body, header[:])
-	if err != nil {
-		return body
-	}
-
-	if header[0] == http2zlibMethodDeflate &&
-		(header[1] == http2zlibLevelDefault || header[1] == http2zlibLevelLow || header[1] == http2zlibLevelMedium || header[1] == http2zlibLevelBest) {
-		return &http2zlibDeflateReader{
-			body: http2prependBytesToReadCloser(header[:], body),
-		}
-	} else if header[0] == http2zlibMethodDeflate {
-		return &http2deflateReader{
-			body: http2prependBytesToReadCloser(header[:], body),
-		}
-	}
-	return body
-}
-
-func http2prependBytesToReadCloser(b []byte, r io.ReadCloser) io.ReadCloser {
-	w := new(bytes.Buffer)
-	w.Write(b)
-	io.Copy(w, r)
-	defer r.Close()
-
-	return io.NopCloser(w)
-}
 
 type http2errorReader struct{ err error }
 

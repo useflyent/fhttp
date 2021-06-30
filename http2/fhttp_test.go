@@ -2,13 +2,17 @@ package http2_test
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"github.com/useflyent/fhttp/cookiejar"
 	"github.com/useflyent/fhttp/httptest"
 	"golang.org/x/net/publicsuffix"
 	"log"
+	ghttp "net/http"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -49,13 +53,6 @@ func TestHeaderOrder(t *testing.T) {
 	if !eq {
 		t.Fatalf("Header order not set properly, \n Got %v \n Want: %v", hk, ":method :authority :scheme :path grind experience live accept-encoding user-agent")
 	}
-}
-
-func compareSettings(ID http2.SettingID, output uint32, expected uint32) error {
-	if output != expected {
-		return errors.New(fmt.Sprintf("Setting %v, expected %d got %d", ID, expected, output))
-	}
-	return nil
 }
 
 // Tests if connection settings are written correctly
@@ -106,6 +103,13 @@ func TestConnectionSettings(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 	}
+}
+
+func compareSettings(ID http2.SettingID, output uint32, expected uint32) error {
+	if output != expected {
+		return errors.New(fmt.Sprintf("Setting %v, expected %d got %d", ID, expected, output))
+	}
+	return nil
 }
 
 // Round trip test, makes sure that the changes made doesn't break the library
@@ -196,4 +200,91 @@ func TestClient_SendsCookies(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	defer resp.Body.Close()
+}
+
+// TestClient_Load is a dumb man's load test with charles :P
+func TestClient_Load(t *testing.T) {
+	u, err := url.Parse("http://localhost:8888")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	pool, err := getCharlesCert()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	c := http.Client{
+		Transport: &http.Transport{
+			ForceAttemptHTTP2: true,
+			Proxy: http.ProxyURL(u),
+			TLSClientConfig: &tls.Config{
+				RootCAs: pool,
+			},
+		},
+	}
+	req, err := http.NewRequest("GET", "https://golang.org/pkg/net/mail/#Address", nil)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	for i:=0;i<10;i++ {
+		resp, err := c.Do(req)
+		if err != nil {
+			t.Fatalf(err.Error())
+		}
+		resp.Body.Close()
+	}
+}
+
+func TestGClient_Load(t *testing.T) {
+	u, err := url.Parse("http://localhost:8888")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	pool, err := getCharlesCert()
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	c := ghttp.Client{
+		Transport: &ghttp.Transport{
+			ForceAttemptHTTP2: true,
+			Proxy: ghttp.ProxyURL(u),
+			TLSClientConfig: &tls.Config{
+				RootCAs: pool,
+			},
+		},
+	}
+	req, err := ghttp.NewRequest("GET", "https://golang.org/pkg/net/mail/#Address", nil)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	for i:=0;i<10;i++ {
+		err := do(&c, req)
+		if err != nil {
+			t.Fatalf(err.Error())
+		}
+	}
+}
+
+func do(c *ghttp.Client, req *ghttp.Request) error {
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
+}
+
+func getCharlesCert() (*x509.CertPool, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	caCert, err := os.ReadFile(fmt.Sprintf("%v/charles_cert.pem", home))
+	if err != nil {
+		return nil, err
+	}
+	certPool := x509.NewCertPool()
+	certPool.AppendCertsFromPEM(caCert)
+	return certPool, nil
 }
