@@ -224,9 +224,11 @@ func (h Header) SortedKeyValuesBy(order map[string]int, exclude map[string]bool)
 	}
 	kvs = hs.kvs[:0]
 	for k, vv := range h {
+		mutex.RLock()
 		if !exclude[k] {
 			kvs = append(kvs, HeaderKeyValues{k, vv})
 		}
+		mutex.RUnlock()
 	}
 	hs.kvs = kvs
 	hs.order = order
