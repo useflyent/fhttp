@@ -178,8 +178,8 @@ func (s *headerSorter) Less(i, j int) bool {
 	if s.order == nil {
 		return s.kvs[i].Key < s.kvs[j].Key
 	}
-	idxi, iok := s.order[strings.ToLower(s.kvs[i].Key)]
-	idxj, jok := s.order[strings.ToLower(s.kvs[j].Key)]
+	idxi, iok := s.order[s.kvs[i].Key]
+	idxj, jok := s.order[s.kvs[j].Key]
 	if !iok && !jok {
 		return s.kvs[i].Key < s.kvs[j].Key
 	} else if !iok && jok {
@@ -233,6 +233,7 @@ func (h Header) SortedKeyValuesBy(order map[string]int, exclude map[string]bool)
 	hs.kvs = kvs
 	hs.order = order
 	sort.Sort(hs)
+
 	return kvs, hs
 }
 
