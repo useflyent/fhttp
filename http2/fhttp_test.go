@@ -133,7 +133,7 @@ func TestRoundTrip(t *testing.T) {
 
 // Tests if content-length header is present in request headers during POST
 func TestContentLength(t *testing.T) {
-	ts := httptest.NewUnstartedServer(http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if hdr, ok := r.Header["Content-Length"]; ok {
 			if len(hdr) != 1 {
 				t.Fatalf("Got %v content-length headers, should only be 1", len(hdr))
@@ -168,7 +168,7 @@ func TestContentLength(t *testing.T) {
 
 // TestClient_Cookies tests whether set cookies are being sent
 func TestClient_SendsCookies(t *testing.T) {
-	ts := httptest.NewUnstartedServer(http.HandlerFunc(func (w http.ResponseWriter, r *http.Request) {
+	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie("cookie")
 		if err != nil {
 			t.Fatalf(err.Error())
@@ -216,7 +216,7 @@ func TestClient_Load(t *testing.T) {
 	c := http.Client{
 		Transport: &http.Transport{
 			ForceAttemptHTTP2: true,
-			Proxy: http.ProxyURL(u),
+			Proxy:             http.ProxyURL(u),
 			TLSClientConfig: &tls.Config{
 				RootCAs: pool,
 			},
@@ -226,7 +226,7 @@ func TestClient_Load(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	for i:=0;i<10;i++ {
+	for i := 0; i < 10; i++ {
 		resp, err := c.Do(req)
 		if err != nil {
 			t.Fatalf(err.Error())
@@ -248,7 +248,7 @@ func TestGClient_Load(t *testing.T) {
 	c := ghttp.Client{
 		Transport: &ghttp.Transport{
 			ForceAttemptHTTP2: true,
-			Proxy: ghttp.ProxyURL(u),
+			Proxy:             ghttp.ProxyURL(u),
 			TLSClientConfig: &tls.Config{
 				RootCAs: pool,
 			},
@@ -258,7 +258,7 @@ func TestGClient_Load(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	for i:=0;i<10;i++ {
+	for i := 0; i < 10; i++ {
 		err := do(&c, req)
 		if err != nil {
 			t.Fatalf(err.Error())

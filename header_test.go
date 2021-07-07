@@ -91,17 +91,56 @@ var headerWriteTests = []struct {
 			"k7: 7a\r\nk7: 7b\r\nk8: 8a\r\nk8: 8b\r\nk9: 9a\r\nk9: 9b\r\n",
 	},
 	// Test sorting headers by the special Header-Order header
+	//{
+	//	Header{
+	//		"a":            {"2"},
+	//		"b":            {"3"},
+	//		"e":            {"1"},
+	//		"c":            {"5"},
+	//		"d":            {"4"},
+	//		HeaderOrderKey: {"e", "a", "b", "d", "c"},
+	//	},
+	//	nil,
+	//	"e: 1\r\na: 2\r\nb: 3\r\nd: 4\r\nc: 5\r\n",
+	//},
+	// Make sure that http 1.1 capitla letters are also sorted properly
 	{
 		Header{
-			"a":            {"2"},
-			"b":            {"3"},
-			"e":            {"1"},
-			"c":            {"5"},
-			"d":            {"4"},
-			HeaderOrderKey: {"e", "a", "b", "d", "c"},
+			"X-NewRelic-ID":         {"12345"},
+			"x-api-key":             {"ABCDEFGHIJKLMNOPQRSTUVWXYZ"},
+			"MESH-Commerce-Channel": {"android-app-phone"},
+			"mesh-version":          {"cart=4"},
+			"User-Agent":            {"size/3.1.0.8355 (android-app-phone; Android 10; Build/CPH2185_11_A.28)"},
+			"X-Request-Auth":        {"hawkHeader"},
+			"X-acf-sensor-data":     {"3456"},
+			"Content-Type":          {"application/json; charset=UTF-8"},
+			"Accept":                {"application/json"},
+			"Transfer-Encoding":     {"chunked"},
+			"Host":                  {"prod.jdgroupmesh.cloud"},
+			"Connection":            {"Keep-Alive"},
+			"Accept-Encoding":       {"gzip"},
+			HeaderOrderKey: {
+				"X-NewRelic-ID",
+				"x-api-key",
+				"MESH-Commerce-Channel",
+				"mesh-version",
+				"User-Agent",
+				"X-Request-Auth",
+				"X-acf-sensor-data",
+				"Content-Type",
+				"Accept",
+				"Transfer-Encoding",
+				"Host",
+				"Connection",
+				"Accept-Encoding",
+			},
 		},
 		nil,
-		"e: 1\r\na: 2\r\nb: 3\r\nd: 4\r\nc: 5\r\n",
+		"X-NewRelic-ID: 12345\r\nx-api-key: ABCDEFGHIJKLMNOPQRSTUVWXYZ\r\nMESH-Commerce-Channel: android-app-phone\r\n" +
+			"mesh-version: cart=4\r\nUser-Agent: size/3.1.0.8355 (android-app-phone; Android 10; Build/CPH2185_11_A.28)\r\n" +
+			"X-Request-Auth: hawkHeader\r\nX-acf-sensor-data: 3456\r\nContent-Type: application/json; charset=UTF-8\r\n" +
+			"Accept: application/json\r\nTransfer-Encoding: chunked\r\nHost: prod.jdgroupmesh.cloud\r\nConnection: Keep-Alive\r\n" +
+			"Accept-Encoding: gzip\r\n",
 	},
 }
 

@@ -1669,7 +1669,7 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 		}
 
 		for _, kv := range kvs {
-			if strings.EqualFold(kv.Key, "host")  {
+			if strings.EqualFold(kv.Key, "host") {
 				// Host is :authority, already sent.
 				continue
 			} else if strings.EqualFold(kv.Key, "connection") || strings.EqualFold(kv.Key, "proxy-connection") ||
