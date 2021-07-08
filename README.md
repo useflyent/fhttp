@@ -23,7 +23,6 @@ Although the header key is capitalized, the header order slice must be in lowerc
 		"x-api-key":             {"ABCDE12345"},
 		"MESH-Commerce-Channel": {"android-app-phone"},
 		"mesh-version":          {"cart=4"},
-		"User-Agent":            {"size/3.1.0.8355 (android-app-phone; Android 10; Build/CPH2185_11_A.28)"},
 		"X-Request-Auth":        {"hawkHeader"},
 		"X-acf-sensor-data":     {"3456"},
 		"Content-Type":          {"application/json; charset=UTF-8"},
