@@ -271,6 +271,55 @@ func (t *transferWriter) shouldSendContentLength() bool {
 	return false
 }
 
+// addHeaders adds transfer headers to an existing header object
+func (t *transferWriter) addHeaders(hdrs *Header, trace *httptrace.ClientTrace) error {
+	if t.Close && !hasToken(t.Header.get("Connection"), "close") {
+		hdrs.Add("Connection", "close")
+		if trace != nil && trace.WroteHeaderField != nil {
+			trace.WroteHeaderField("Connection", []string{"close"})
+		}
+	}
+
+	// Write Content-Length and/or Transfer-Encoding whose Values are a
+	// function of the sanitized field triple (Body, ContentLength,
+	// TransferEncoding)
+	if t.shouldSendContentLength() {
+		hdrs.Add("Content-Length", strconv.FormatInt(t.ContentLength, 10))
+		if trace != nil && trace.WroteHeaderField != nil {
+			trace.WroteHeaderField("Content-Length", []string{strconv.FormatInt(t.ContentLength, 10)})
+		}
+	} else if chunked(t.TransferEncoding) {
+		hdrs.Add("Transfer-Encoding", "chunked")
+		if trace != nil && trace.WroteHeaderField != nil {
+			trace.WroteHeaderField("Transfer-Encoding", []string{"chunked"})
+		}
+	}
+
+	// Write Trailer header
+	if t.Trailer != nil {
+		keys := make([]string, 0, len(t.Trailer))
+		for k := range t.Trailer {
+			k = CanonicalHeaderKey(k)
+			switch k {
+			case "Transfer-Encoding", "Trailer", "Content-Length":
+				return badStringError("invalid Trailer Key", k)
+			}
+			keys = append(keys, k)
+		}
+		if len(keys) > 0 {
+			sort.Strings(keys)
+			// TODO: could do better allocation-wise here, but trailers are rare,
+			// so being lazy for now.
+			hdrs.Add("Trailer", strings.Join(keys, ","))
+			if trace != nil && trace.WroteHeaderField != nil {
+				trace.WroteHeaderField("Trailer", keys)
+			}
+		}
+	}
+
+	return nil
+}
+
 func (t *transferWriter) writeHeader(w io.Writer, trace *httptrace.ClientTrace) error {
 	if t.Close && !hasToken(t.Header.get("Connection"), "close") {
 		if _, err := io.WriteString(w, "Connection: close\r\n"); err != nil {
