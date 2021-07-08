@@ -6,6 +6,7 @@ package http
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"runtime"
 	"testing"
@@ -303,6 +304,53 @@ func TestCloneOrMakeHeader(t *testing.T) {
 			got.Get("A")
 		})
 	}
+}
+
+func TestTransferEncoding(t *testing.T) {
+	req, err := NewRequest("POST", "https://google.com", nil)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	req.Header = Header{
+		"Content-Type":          {"application/json; charset=UTF-8"},
+		"Accept":                {"application/json"},
+		"mesh-version":          {"cart=4"},
+		"MESH-Commerce-Channel": {"android-app-phone"},
+		"User-Agent":            {"task.Variables.UserAgent"},
+		"X-NewRelic-ID":         {""},
+		"Host":                  {"prod.jdgroupmesh.cloud"},
+		"Connection":            {"Keep-Alive"},
+		"Accept-Encoding":       {"gzip"},
+		HeaderOrderKey: {
+			"x-newrelic-id",
+			"x-api-key",
+			"mesh-commerce-channel",
+			"mesh-version",
+			"user-agent",
+			"x-request-auth",
+			"x-acf-sensor-data",
+			"content-type",
+			"accept",
+			"transfer-encoding",
+			"host",
+			"connection",
+			"accept-encoding",
+		},
+		PHeaderOrderKey: {
+			":method",
+			":path",
+			":authority",
+			":scheme",
+		},
+	}
+	req.TransferEncoding = []string{"chunked"}
+	var b []byte
+	buf := bytes.NewBuffer(b)
+	err = req.Write(buf)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	fmt.Println(buf.String())
 }
 
 // TestHTTP1HeaderOrder tests capitalized http1.1 header order written by request

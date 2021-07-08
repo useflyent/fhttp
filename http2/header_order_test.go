@@ -26,7 +26,7 @@ func TestHeaderOrder(t *testing.T) {
 		"sec-fetch-dest":   {"empty"},
 		"accept-language":  {"en-US,en;q=0.9"},
 		"accept-encoding":  {"gzip, deflate, br"},
-		"referer":         {"https://www.size.co.uk/product/white-jordan-air-1-retro-high/16077886/"},
+		"referer":          {"https://www.size.co.uk/product/white-jordan-air-1-retro-high/16077886/"},
 		http.HeaderOrderKey: {
 			"sec-ch-ua",
 			"accept",
