@@ -140,7 +140,6 @@ func TestWithCert(t *testing.T) {
 	}
 
 	req, err := http.NewRequest("GET", "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Encoding", nil)
-
 	if err != nil {
 		t.Errorf(err.Error())
 		return
