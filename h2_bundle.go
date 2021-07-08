@@ -8428,7 +8428,7 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 		}
 
 		// Does not include accept-encoding header if its defined in req.Header
-		if _, ok := req.Header["accept-encoding"]; !ok && addGzipHeader {
+		if _, ok := hdrs["accept-encoding"]; !ok && addGzipHeader {
 			hdrs["accept-encoding"] = []string{"gzip, deflate, br"}
 		}
 
@@ -8494,8 +8494,6 @@ func (cc *http2ClientConn) encodeHeaders(req *Request, addGzipHeader bool, trail
 				if kv.Values[0] == "" {
 					continue
 				}
-			} else if strings.EqualFold(kv.Key, "accept-encoding") {
-				addGzipHeader = false
 			}
 
 			for _, v := range kv.Values {
