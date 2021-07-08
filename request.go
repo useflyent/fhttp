@@ -622,11 +622,6 @@ func (r *Request) write(w io.Writer, usingProxy bool, extraHeaders Header, waitF
 		r.Header.Set("User-Agent", "Go-http-client/1.1")
 	}
 
-	// if transfer encoding header exists write it
-	if len(r.TransferEncoding) > 0 {
-		r.Header["Transfer-Encoding"] = r.TransferEncoding
-	}
-
 	// Process Body,ContentLength,Close,Trailer
 	tw, err := newTransferWriter(r)
 	if err != nil {
