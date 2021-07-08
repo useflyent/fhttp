@@ -1,7 +1,6 @@
 package http_test
 
 import (
-	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -183,60 +182,6 @@ func TestWithCert(t *testing.T) {
 
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected status code 200, got %v", resp.StatusCode)
-	}
-}
-
-func TestHTTP1HeaderOrder(t *testing.T) {
-	req, err := http.NewRequest("GET", "https://prod.jdgroupmesh.cloud/stores/size/products/16069871?channel=android-app-phone&expand=variations,informationBlocks,customisations", nil)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	req.Header = http.Header{
-		"X-NewRelic-ID":         {"12345"},
-		"x-api-key":             {"ABCDE12345"},
-		"MESH-Commerce-Channel": {"android-app-phone"},
-		"mesh-version":          {"cart=4"},
-		"User-Agent":            {"size/3.1.0.8355 (android-app-phone; Android 10; Build/CPH2185_11_A.28)"},
-		"X-Request-Auth":        {"hawkHeader"},
-		"X-acf-sensor-data":     {"3456"},
-		"Content-Type":          {"application/json; charset=UTF-8"},
-		"Accept":                {"application/json"},
-		"Transfer-Encoding":     {"chunked"},
-		"Host":                  {"prod.jdgroupmesh.cloud"},
-		"Connection":            {"Keep-Alive"},
-		"Accept-Encoding":       {"gzip"},
-		http.HeaderOrderKey: {
-			"X-NewRelic-ID",
-			"x-api-key",
-			"MESH-Commerce-Channel",
-			"mesh-version",
-			"User-Agent",
-			"X-Request-Auth",
-			"X-acf-sensor-data",
-			"Transfer-Encoding",
-			"Content-Type",
-			"Accept",
-			"Host",
-			"Connection",
-			"Accept-Encoding",
-		},
-		http.PHeaderOrderKey: {
-			":method",
-			":path",
-			":authority",
-			":scheme",
-		},
-	}
-
-	var b []byte
-	buf := bytes.NewBuffer(b)
-	err = req.Write(buf)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	expected := "GET /stores/size/products/16069871?channel=android-app-phone&expand=variations,informationBlocks,customisations HTTP/1.1\r\nX-NewRelic-ID: 12345\r\nx-api-key: ABCDE12345\r\nMESH-Commerce-Channel: android-app-phone\r\nmesh-version: cart=4\r\nUser-Agent: size/3.1.0.8355 (android-app-phone; Android 10; Build/CPH2185_11_A.28)\r\nX-Request-Auth: hawkHeader\r\nX-acf-sensor-data: 3456\r\nTransfer-Encoding: chunked\r\nContent-Type: application/json; charset=UTF-8\r\nAccept: application/json\r\nHost: prod.jdgroupmesh.cloud\r\nConnection: Keep-Alive\r\nAccept-Encoding: gzip\r\n\r\n"
-	if expected != buf.String() {
-		t.Fatalf("got: %swant: %s", buf.String(), expected)
 	}
 }
 

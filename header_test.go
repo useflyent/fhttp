@@ -91,18 +91,18 @@ var headerWriteTests = []struct {
 			"k7: 7a\r\nk7: 7b\r\nk8: 8a\r\nk8: 8b\r\nk9: 9a\r\nk9: 9b\r\n",
 	},
 	// Test sorting headers by the special Header-Order header
-	//{
-	//	Header{
-	//		"a":            {"2"},
-	//		"b":            {"3"},
-	//		"e":            {"1"},
-	//		"c":            {"5"},
-	//		"d":            {"4"},
-	//		HeaderOrderKey: {"e", "a", "b", "d", "c"},
-	//	},
-	//	nil,
-	//	"e: 1\r\na: 2\r\nb: 3\r\nd: 4\r\nc: 5\r\n",
-	//},
+	{
+		Header{
+			"a":            {"2"},
+			"b":            {"3"},
+			"e":            {"1"},
+			"c":            {"5"},
+			"d":            {"4"},
+			HeaderOrderKey: {"e", "a", "b", "d", "c"},
+		},
+		nil,
+		"e: 1\r\na: 2\r\nb: 3\r\nd: 4\r\nc: 5\r\n",
+	},
 	// Make sure that http 1.1 capitla letters are also sorted properly
 	{
 		Header{
@@ -302,5 +302,60 @@ func TestCloneOrMakeHeader(t *testing.T) {
 			got.Add("A", "B")
 			got.Get("A")
 		})
+	}
+}
+
+// TestHTTP1HeaderOrder tests capitalized http1.1 header order written by request
+func TestHTTP1HeaderOrder(t *testing.T) {
+	req, err := NewRequest("GET", "https://prod.jdgroupmesh.cloud/stores/size/products/16069871?channel=android-app-phone&expand=variations,informationBlocks,customisations", nil)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	req.Header = Header{
+		"X-NewRelic-ID":         {"12345"},
+		"x-api-key":             {"ABCDE12345"},
+		"MESH-Commerce-Channel": {"android-app-phone"},
+		"mesh-version":          {"cart=4"},
+		"User-Agent":            {"size/3.1.0.8355 (android-app-phone; Android 10; Build/CPH2185_11_A.28)"},
+		"X-Request-Auth":        {"hawkHeader"},
+		"X-acf-sensor-data":     {"3456"},
+		"Content-Type":          {"application/json; charset=UTF-8"},
+		"Accept":                {"application/json"},
+		"Transfer-Encoding":     {"chunked"},
+		"Host":                  {"prod.jdgroupmesh.cloud"},
+		"Connection":            {"Keep-Alive"},
+		"Accept-Encoding":       {"gzip"},
+		HeaderOrderKey: {
+			"x-newrelic-id",
+			"x-api-key",
+			"mesh-commerce-channel",
+			"mesh-version",
+			"user-agent",
+			"x-request-auth",
+			"x-acf-sensor-data",
+			"transfer-encoding",
+			"content-type",
+			"accept",
+			"host",
+			"connection",
+			"accept-encoding",
+		},
+		PHeaderOrderKey: {
+			":method",
+			":path",
+			":authority",
+			":scheme",
+		},
+	}
+
+	var b []byte
+	buf := bytes.NewBuffer(b)
+	err = req.Write(buf)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	expected := "GET /stores/size/products/16069871?channel=android-app-phone&expand=variations,informationBlocks,customisations HTTP/1.1\r\nX-NewRelic-ID: 12345\r\nx-api-key: ABCDE12345\r\nMESH-Commerce-Channel: android-app-phone\r\nmesh-version: cart=4\r\nUser-Agent: size/3.1.0.8355 (android-app-phone; Android 10; Build/CPH2185_11_A.28)\r\nX-Request-Auth: hawkHeader\r\nX-acf-sensor-data: 3456\r\nTransfer-Encoding: chunked\r\nContent-Type: application/json; charset=UTF-8\r\nAccept: application/json\r\nHost: prod.jdgroupmesh.cloud\r\nConnection: Keep-Alive\r\nAccept-Encoding: gzip\r\n\r\n"
+	if expected != buf.String() {
+		t.Fatalf("got:\n%swant:\n%s", buf.String(), expected)
 	}
 }

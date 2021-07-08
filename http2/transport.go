@@ -1645,7 +1645,7 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 		// Should clone, because this function is called twice; to read and to write.
 		// If headers are added to the req, then headers would be added twice.
 		hdrs := req.Header.Clone()
-		if _, ok := req.Header["content-length"]; !ok && shouldSendReqContentLength(req.Method, contentLength){
+		if _, ok := req.Header["content-length"]; !ok && shouldSendReqContentLength(req.Method, contentLength) {
 			hdrs["content-length"] = []string{strconv.FormatInt(contentLength, 10)}
 		}
 
