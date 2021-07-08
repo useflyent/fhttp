@@ -4,6 +4,7 @@ import (
 	"bytes"
 	http "github.com/useflyent/fhttp"
 	"github.com/useflyent/fhttp/httptrace"
+	"log"
 	"strings"
 	"testing"
 )
@@ -88,7 +89,6 @@ func TestHeaderOrder2(t *testing.T) {
 	req.Header[http.HeaderOrderKey] = []string{"grind", "experience", "live"}
 	req.Header[http.PHeaderOrderKey] = []string{":method", ":authority", ":scheme", ":path"}
 	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
-
 	tr := &Transport{}
 	resp, err := tr.RoundTrip(req)
 	if err != nil {
@@ -100,4 +100,53 @@ func TestHeaderOrder2(t *testing.T) {
 	if !eq {
 		t.Fatalf("Header order not set properly, \n Got %v \n Want: %v", hk, ":method :authority :scheme :path grind experience live accept-encoding user-agent")
 	}
+}
+
+func TestHeaderOrder3(t *testing.T) {
+	req, err := http.NewRequest("GET", "https://google.com", nil)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	req.Header = http.Header{
+		http.HeaderOrderKey: {
+			"sec-ch-ua",
+			"accept",
+			"x-requested-with",
+			"sec-ch-ua-mobile",
+			"user-agent",
+			"sec-fetch-site",
+			"sec-fetch-mode",
+			"sec-fetch-dest",
+			"referer",
+			"accept-encoding",
+			"accept-language",
+			"cookie",
+		},
+	}
+	req.Header.Add("accept", "text / html, application/xhtml + xml, application / xml;q = 0.9, image/avif, image/webp, image/apng, * /*;q=0.8,application/signed-exchange;v=b3;q=0.9")
+	req.Header.Add("accept-encoding", "gzip, deflate, br")
+	req.Header.Add("accept-language", "en-GB,en-US;q=0.9,en;q=0.8")
+	req.Header.Add("cache-control", "no-cache")
+	req.Header.Add("pragma", "no-cache")
+	req.Header.Add("referer", "https://www.offspring.co.uk/")
+	req.Header.Add("sec-ch-ua", `" Not A;Brand"; v = "99", "Chromium"; v = "90", "Google Chrome"; v = "90"`)
+	req.Header.Add("sec-ch-ua-mobile", "?0")
+	req.Header.Add("sec-fetch-dest", "document")
+	req.Header.Add("sec-fetch-mode", "navigate")
+	req.Header.Add("sec-fetch-site", "same-origin")
+	req.Header.Add("sec-fetch-user", "?1")
+	req.Header.Add("upgrade-insecure-requests", "1")
+	req.Header.Add("user-agent", "Mozilla")
+	var hdrs string
+	trace := &httptrace.ClientTrace{WroteHeaderField: func(key string, value []string) {
+		hdrs += key + "\n"
+	}}
+	req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+	tr := Transport{}
+	resp, err := tr.RoundTrip(req)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	defer resp.Body.Close()
+	log.Println(hdrs)
 }
