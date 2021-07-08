@@ -618,7 +618,7 @@ func (r *Request) write(w io.Writer, usingProxy bool, extraHeaders Header, waitF
 	}
 
 	// if user agent field is not present, add it
-	if _, ok := r.Header["User-Agent"]; !ok {
+	if uaCap, uaLow := r.Header["User-Agent"], r.Header["user-agent"]; uaCap == nil && uaLow == nil {
 		r.Header.Set("User-Agent", "Go-http-client/1.1")
 	}
 
@@ -627,7 +627,7 @@ func (r *Request) write(w io.Writer, usingProxy bool, extraHeaders Header, waitF
 	if err != nil {
 		return err
 	}
-	err = tw.writeHeader(w, trace)
+	err = tw.addHeaders(&r.Header, trace)
 	if err != nil {
 		return err
 	}

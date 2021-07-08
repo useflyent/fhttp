@@ -1129,7 +1129,6 @@ func (cc *ClientConn) roundTrip(req *http.Request) (res *http.Response, gotErrAf
 	body := req.Body
 	contentLen := actualContentLength(req)
 	hasBody := contentLen != 0
-
 	requestedGzip := cc.requestGzip(req)
 
 	// we send: HEADERS{1}, CONTINUATION{0,} + DATA{0,} (DATA is
@@ -1646,12 +1645,13 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 		// Should clone, because this function is called twice; to read and to write.
 		// If headers are added to the req, then headers would be added twice.
 		hdrs := req.Header.Clone()
-		if shouldSendReqContentLength(req.Method, contentLength) {
-			hdrs.Add("content-length", strconv.FormatInt(contentLength, 10))
+		if _, ok := req.Header["content-length"]; !ok && shouldSendReqContentLength(req.Method, contentLength) {
+			hdrs["content-length"] = []string{strconv.FormatInt(contentLength, 10)}
 		}
+
 		// Does not include accept-encoding header if its defined in req.Header
-		if _, ok := req.Header["accept-encoding"]; !ok && addGzipHeader {
-			hdrs.Add("accept-encoding", "gzip, deflate, br")
+		if _, ok := hdrs["accept-encoding"]; !ok && addGzipHeader {
+			hdrs["accept-encoding"] = []string{"gzip, deflate, br"}
 		}
 
 		// Formats and writes headers with f function
@@ -1716,8 +1716,6 @@ func (cc *ClientConn) encodeHeaders(req *http.Request, addGzipHeader bool, trail
 				if kv.Values[0] == "" {
 					continue
 				}
-			} else if strings.EqualFold(kv.Key, "accept-encoding") {
-				addGzipHeader = false
 			}
 
 			for _, v := range kv.Values {

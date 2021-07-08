@@ -15,6 +15,46 @@ Documentation can be contributed, otherwise, look at tests and examples. The mai
 
 The package allows for both pseudo header order and normal header order. Most of the code is taken from [this Pull Request](https://go-review.googlesource.com/c/go/+/105755/).
 
+**Note on HTTP/1.1 header order**
+Although the header key is capitalized, the header order slice must be in lowercase.
+```go
+	req.Header = http.Header{
+		"X-NewRelic-ID":         {"12345"},
+		"x-api-key":             {"ABCDE12345"},
+		"MESH-Commerce-Channel": {"android-app-phone"},
+		"mesh-version":          {"cart=4"},
+		"X-Request-Auth":        {"hawkHeader"},
+		"X-acf-sensor-data":     {"3456"},
+		"Content-Type":          {"application/json; charset=UTF-8"},
+		"Accept":                {"application/json"},
+		"Transfer-Encoding":     {"chunked"},
+		"Host":                  {"example.com"},
+		"Connection":            {"Keep-Alive"},
+		"Accept-Encoding":       {"gzip"},
+		HeaderOrderKey: {
+			"x-newrelic-id",
+			"x-api-key",
+			"mesh-commerce-channel",
+			"mesh-version",
+			"user-agent",
+			"x-request-auth",
+			"x-acf-sensor-data",
+			"transfer-encoding",
+			"content-type",
+			"accept",
+			"host",
+			"connection",
+			"accept-encoding",
+		},
+		PHeaderOrderKey: {
+			":method",
+			":path",
+			":authority",
+			":scheme",
+		},
+	}
+```
+
 ### Connection settings
 
 fhhtp has Chrome-like connection settings, as shown below:
