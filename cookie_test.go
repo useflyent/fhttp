@@ -440,10 +440,10 @@ var readCookiesTests = []struct {
 
 func TestReadCookies(t *testing.T) {
 	for i, tt := range readCookiesTests {
-		for n := 0; n < 2; n++ { // to verify readCookies doesn't mutate its input
-			c := readCookies(tt.Header, tt.Filter)
+		for n := 0; n < 2; n++ { // to verify ReadCookies doesn't mutate its input
+			c := ReadCookies(tt.Header, tt.Filter)
 			if !reflect.DeepEqual(c, tt.Cookies) {
-				t.Errorf("#%d readCookies:\nhave: %s\nwant: %s\n", i, toJSON(c), toJSON(tt.Cookies))
+				t.Errorf("#%d ReadCookies:\nhave: %s\nwant: %s\n", i, toJSON(c), toJSON(tt.Cookies))
 				continue
 			}
 		}
@@ -611,9 +611,9 @@ func BenchmarkReadCookies(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		c = readCookies(header, "")
+		c = ReadCookies(header, "")
 	}
 	if !reflect.DeepEqual(c, wantCookies) {
-		b.Fatalf("readCookies:\nhave: %s\nwant: %s\n", toJSON(c), toJSON(wantCookies))
+		b.Fatalf("ReadCookies:\nhave: %s\nwant: %s\n", toJSON(c), toJSON(wantCookies))
 	}
 }

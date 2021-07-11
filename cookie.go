@@ -231,11 +231,11 @@ func (c *Cookie) String() string {
 	return b.String()
 }
 
-// readCookies parses all "Cookie" Values from the header h and
+// ReadCookies parses all "Cookie" Values from the header h and
 // returns the successfully parsed Cookies.
 //
 // if filter isn't empty, only cookies of that name are returned
-func readCookies(h Header, filter string) []*Cookie {
+func ReadCookies(h Header, filter string) []*Cookie {
 	lines := h["Cookie"]
 	if len(lines) == 0 {
 		return []*Cookie{}

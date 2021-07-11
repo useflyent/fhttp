@@ -408,7 +408,7 @@ func (r *Request) UserAgent() string {
 
 // Cookies parses and returns the HTTP cookies sent with the request.
 func (r *Request) Cookies() []*Cookie {
-	return readCookies(r.Header, "")
+	return ReadCookies(r.Header, "")
 }
 
 // ErrNoCookie is returned by Request's Cookie method when a cookie is not found.
@@ -419,7 +419,7 @@ var ErrNoCookie = errors.New("http: named cookie not present")
 // If multiple cookies match the given name, only one cookie will
 // be returned.
 func (r *Request) Cookie(name string) (*Cookie, error) {
-	for _, c := range readCookies(r.Header, name) {
+	for _, c := range ReadCookies(r.Header, name) {
 		return c, nil
 	}
 	return nil, ErrNoCookie
