@@ -52,9 +52,9 @@ const (
 	SameSiteNoneMode
 )
 
-// readSetCookies parses all "Set-Cookie" Values from
+// ReadSetCookies parses all "Set-Cookie" Values from
 // the header h and returns the successfully parsed Cookies.
-func readSetCookies(h Header) []*Cookie {
+func ReadSetCookies(h Header) []*Cookie {
 	cookieCount := len(h["Set-Cookie"])
 	if cookieCount == 0 {
 		return []*Cookie{}

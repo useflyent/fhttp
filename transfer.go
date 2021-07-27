@@ -284,6 +284,11 @@ func (t *transferWriter) addHeaders(hdrs *Header, trace *httptrace.ClientTrace) 
 	// function of the sanitized field triple (Body, ContentLength,
 	// TransferEncoding)
 	if t.shouldSendContentLength() {
+		// if the header is present, deleted it and prioritize t.ContentLength
+		// Custom content-length should be set by Request.ContentLength
+		if hdrs.Get("Content-Length") != "" {
+			hdrs.Del("Content-Length")
+		}
 		hdrs.Add("Content-Length", strconv.FormatInt(t.ContentLength, 10))
 		if trace != nil && trace.WroteHeaderField != nil {
 			trace.WroteHeaderField("Content-Length", []string{strconv.FormatInt(t.ContentLength, 10)})

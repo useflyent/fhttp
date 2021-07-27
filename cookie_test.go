@@ -370,10 +370,10 @@ func toJSON(v interface{}) string {
 
 func TestReadSetCookies(t *testing.T) {
 	for i, tt := range readSetCookiesTests {
-		for n := 0; n < 2; n++ { // to verify readSetCookies doesn't mutate its input
-			c := readSetCookies(tt.Header)
+		for n := 0; n < 2; n++ { // to verify ReadSetCookies doesn't mutate its input
+			c := ReadSetCookies(tt.Header)
 			if !reflect.DeepEqual(c, tt.Cookies) {
-				t.Errorf("#%d readSetCookies: have\n%s\nwant\n%s\n", i, toJSON(c), toJSON(tt.Cookies))
+				t.Errorf("#%d ReadSetCookies: have\n%s\nwant\n%s\n", i, toJSON(c), toJSON(tt.Cookies))
 				continue
 			}
 		}
@@ -582,10 +582,10 @@ func BenchmarkReadSetCookies(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		c = readSetCookies(header)
+		c = ReadSetCookies(header)
 	}
 	if !reflect.DeepEqual(c, wantCookies) {
-		b.Fatalf("readSetCookies:\nhave: %s\nwant: %s\n", toJSON(c), toJSON(wantCookies))
+		b.Fatalf("ReadSetCookies:\nhave: %s\nwant: %s\n", toJSON(c), toJSON(wantCookies))
 	}
 }
 
@@ -615,5 +615,16 @@ func BenchmarkReadCookies(b *testing.B) {
 	}
 	if !reflect.DeepEqual(c, wantCookies) {
 		b.Fatalf("ReadCookies:\nhave: %s\nwant: %s\n", toJSON(c), toJSON(wantCookies))
+	}
+}
+
+func TestParseCookieStr(t *testing.T) {
+	cookieStr := "name=value; Max-Age=31536000; Domain=.google.com; Path=/; Secure; SameSite=Lax"
+	h := Header{
+		"Set-Cookie": {cookieStr},
+	}
+	cookies := ReadSetCookies(h)
+	if len(cookies) != 1 {
+		t.Fatalf("got %d cookies, only want 1", len(cookies))
 	}
 }

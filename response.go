@@ -123,7 +123,7 @@ type Response struct {
 
 // Cookies parses and returns the cookies set in the Set-Cookie headers.
 func (r *Response) Cookies() []*Cookie {
-	return readSetCookies(r.Header)
+	return ReadSetCookies(r.Header)
 }
 
 // ErrNoLocation is returned by Response's Location method
