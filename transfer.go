@@ -271,6 +271,11 @@ func (t *transferWriter) shouldSendContentLength() bool {
 	return false
 }
 
+const (
+	ContentLengthEmpty  = "EMPTY_CONTENT_LENGTH"
+	ContentLengthDelete = "DELETE_CONTENT_LENGTH"
+)
+
 // addHeaders adds transfer headers to an existing header object
 func (t *transferWriter) addHeaders(hdrs *Header, trace *httptrace.ClientTrace) error {
 	if t.Close && !hasToken(t.Header.get("Connection"), "close") {
@@ -284,17 +289,25 @@ func (t *transferWriter) addHeaders(hdrs *Header, trace *httptrace.ClientTrace) 
 	// function of the sanitized field triple (Body, ContentLength,
 	// TransferEncoding)
 	if t.shouldSendContentLength() {
-		// if the header is present, deleted it and prioritize t.ContentLength
-		// Custom content-length should be set by Request.ContentLength
-		if hdrs.Get("Content-Length") != "" {
+		// Only set content-length header is it is not already present, allowing
+		// users to set their own content-length header
+		cl := hdrs.Get("Content-Length")
+		switch cl {
+		case "":
+			hdrs.Add("Content-Length", strconv.FormatInt(t.ContentLength, 10))
+		case ContentLengthEmpty:
+			hdrs.Del("Content-Length")
+			hdrs.Add("Content-Length", "")
+		case ContentLengthDelete:
 			hdrs.Del("Content-Length")
 		}
-		hdrs.Add("Content-Length", strconv.FormatInt(t.ContentLength, 10))
 		if trace != nil && trace.WroteHeaderField != nil {
 			trace.WroteHeaderField("Content-Length", []string{strconv.FormatInt(t.ContentLength, 10)})
 		}
 	} else if chunked(t.TransferEncoding) {
-		hdrs.Add("Transfer-Encoding", "chunked")
+		if hdrs.Get("Transfer-Encoding") == "" {
+			hdrs.Add("Transfer-Encoding", "chunked")
+		}
 		if trace != nil && trace.WroteHeaderField != nil {
 			trace.WroteHeaderField("Transfer-Encoding", []string{"chunked"})
 		}
