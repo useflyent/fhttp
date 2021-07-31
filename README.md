@@ -1,19 +1,10 @@
 # fhttp
 
-<!-- This note is not necessary on this repo, but I won't delete it as it should be included on the original one.
-**NOTE**
-This maintenance of this library has moved over to [useflyent](https://github.com/useflyent/fhttp). The only use for this repository is so imports will not break.
+# Features
 
-The "f" stands for "fly" *(or "flex")*. fhttp is a fork of `net/http` that provides an array of features pertaining to the fingerprint of the golang `http` client. Through these changes, the `http` client becomes much more flexible, and when combined with transports such as [uTLS](https://github.com/refraction-networking/utls) it can mitigate fingerprinting requests, reducing the chances that a server detects they were made by a golang program, instead having them appear to originate from a regular Chrome browser.
+## Ordered Headers
 
-Documentation can be contributed, otherwise, look at tests and examples. The main one should be [example_client_test.go](example_client_test.go).
--->
-
-## Features
-
-### Ordered Headers
-
-The package allows for both pseudo header order and normal header order. Most of the code is taken from [this Pull Request](https://go-review.googlesource.com/c/go/+/105755/).
+The package allows for both pseudo header order and normal header order. Most of the code is from this [this Pull Request](https://go-review.googlesource.com/c/go/+/105755/).
 
 **Note on HTTP/1.1 header order**
 Although the header key is capitalized, the header order slice must be in lowercase.
@@ -55,7 +46,7 @@ Although the header key is capitalized, the header order slice must be in lowerc
 	}
 ```
 
-### Connection settings
+## Connection settings
 
 fhhtp has Chrome-like connection settings, as shown below:
 
@@ -81,15 +72,15 @@ SETTINGS_MAX_HEADER_LIST_SIZE = 10485760
 
 The ENABLE_PUSH implementation was merged from [this Pull Request](https://go-review.googlesource.com/c/net/+/181497/).
 
-### gzip, deflate, and br encoding
+## gzip, deflate, and br encoding
 
 `gzip`, `deflate`, and `br` encoding are all supported by the package.
 
-### Pseudo header order
+## Pseudo header order
 
 fhttp supports pseudo header order for http2, helping mitigate fingerprinting. You can read more about how it works [here](https://www.akamai.com/uk/en/multimedia/documents/white-paper/passive-fingerprinting-of-http2-clients-white-paper.pdf).
 
-### Backward compatible with net/http
+## Backward compatible with net/http
 
 Although this library is an extension of `net/http`, it is also meant to be backward compatible. Replacing
 
@@ -108,6 +99,26 @@ import (
 ```
 
 SHOULD not break anything.
+
+## Versatile Content-Length and Transfer-Encoding headers
+
+fhttp user to set custom Content-Length and Transfer-Encoding headers of all types.
+
+### To set an empty Content-Length header
+```go
+req.Header = http.Header{
+	"Content-Length": {http.ContentLengthEmpty},
+}
+```
+
+### To ignore setting the Content-Length header
+```go
+req.Header = http.Header{
+    "Content-Length": {http.ContentLengthDelete},
+}
+```
+
+Any Content-Length or Transfer-Encoding headers set will be prioritized and fhttp will not set proper Content-length or Transfer-Encoding headers
 
 ## Credits
 

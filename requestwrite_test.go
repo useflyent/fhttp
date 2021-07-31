@@ -58,24 +58,24 @@ var reqWriteTests = []reqWriteTest{
 		},
 
 		WantWrite: "GET / HTTP/1.1\r\n" +
-			"Host: www.techcrunch.com\r\n" +
-			"User-Agent: Fake\r\n" +
 			"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n" +
 			"Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7\r\n" +
 			"Accept-Encoding: gzip,deflate\r\n" +
 			"Accept-Language: en-us,en;q=0.5\r\n" +
+			"Host: www.techcrunch.com\r\n" +
 			"Keep-Alive: 300\r\n" +
-			"Proxy-Connection: keep-alive\r\n\r\n",
+			"Proxy-Connection: keep-alive\r\n" +
+			"User-Agent: Fake\r\n\r\n",
 
 		WantProxy: "GET http://www.techcrunch.com/ HTTP/1.1\r\n" +
-			"Host: www.techcrunch.com\r\n" +
-			"User-Agent: Fake\r\n" +
 			"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n" +
 			"Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7\r\n" +
 			"Accept-Encoding: gzip,deflate\r\n" +
 			"Accept-Language: en-us,en;q=0.5\r\n" +
+			"Host: www.techcrunch.com\r\n" +
 			"Keep-Alive: 300\r\n" +
-			"Proxy-Connection: keep-alive\r\n\r\n",
+			"Proxy-Connection: keep-alive\r\n" +
+			"User-Agent: Fake\r\n\n",
 	},
 	// HTTP/1.1 => chunked coding; body; empty trailer
 	1: {
@@ -607,6 +607,79 @@ var reqWriteTests = []reqWriteTest{
 			"User-Agent: Go-http-client/1.1\r\n" +
 			"Content-Length: 0\r\n\r\n",
 	},
+
+	27: { // Custom Content-Length header disregarding the Body
+		Req: Request{
+			Method: "POST",
+			URL: mustParseURL("/"),
+			Header: Header{"Content-Length": {"100"}},
+		},
+		WantWrite: "POST / HTTP/1.1\r\n" +
+			"Content-Length: 100\r\n" +
+			"Host: www.google.com\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n\r\n",
+		WantProxy: "POST / HTTP/1.1\r\n" +
+			"Content-Length: 100\r\n" +
+			"Host: www.google.com\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n\r\n",
+	},
+	// TODO: @zMrKrabz these are sent with Transfer-Encoding headers, when they're not suppose to
+	28: { // POST with body but with no content-length header
+		Req: Request{
+			Method: "POST",
+			URL: mustParseURL("https://www.googl.com/"),
+			Header: Header{"Content-Length": {ContentLengthDelete}},
+		},
+		Body: []byte("Hello World"),
+		WantWrite: "POST / HTTP/1.1\r\n" +
+			"Host: www.google.com\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n\r\n" +
+			"Hello World",
+		WantProxy: "POST / HTTP/1.1\r\n" +
+			"Host: www.google.com\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n\r\n" +
+			"Hello World",
+	},
+	29: {// POST with empty content length header disregarding body
+		Req: Request{
+			Method: "POST",
+			URL: mustParseURL("/"),
+			Header: Header{"Content-Length": {ContentLengthDelete}},
+			Body: io.NopCloser(strings.NewReader("Hello World")),
+		},
+		WantWrite: "POST / HTTP/1.1\r\n" +
+			"Host: www.google.com\r\n" +
+			"Content-Length:\r\n "+
+			"User-Agent: Go-http-client/1.1\r\n\r\n" +
+			"Hello World",
+		WantProxy: "POST / HTTP/1.1\r\n" +
+			"Host: www.google.com\r\n" +
+			"User-Agent: Go-http-client/1.1\r\n\r\n" +
+			"Hello World",
+		 },
+}
+
+// TestRequestCustomTransferEncoding shows how to send a POST request with no content-length header
+func TestRequestCustomTransferEncoding(t *testing.T) {
+	req, err := NewRequest("POST", "https://www.google.com", bytes.NewBuffer([]byte("Hello World\nfrom aliens of mars")))
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	req.Header = Header{"Transfer-Encoding": {"chunked"}}
+	b := bytes.NewBuffer([]byte(""))
+	if err := req.Write(b); err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	expected := "POST / HTTP/1.1\r\n" +
+		"Content-Length: 31\r\n" +
+		"Host: www.google.com\r\n" +
+		"Transfer-Encoding: chunked\r\n" +
+		"User-Agent: Go-http-client/1.1\r\n\r\n" +
+		"Hello World\nfrom aliens of mars"
+	if expected != b.String() {
+		t.Fatalf("Expected:\n%s\nGot:%s\n", expected, b.String())
+	}
 }
 
 func TestRequestWrite(t *testing.T) {
