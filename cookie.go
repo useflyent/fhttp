@@ -376,8 +376,13 @@ func sanitizeCookieValue(v string) string {
 	return v
 }
 
+// Disallows illegal characters in cookie value. Ignores illegal character `"`, some cookies have the " value
 func validCookieValueByte(b byte) bool {
-	return 0x20 <= b && b < 0x7f && b != '"' && b != ';' && b != '\\'
+	return 0x20 <= b &&
+		b < 0x7f &&
+		// b != '"' &&
+		b != ';' &&
+		b != '\\'
 }
 
 // path-av           = "Path=" path-value

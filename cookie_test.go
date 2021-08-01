@@ -352,6 +352,18 @@ var readSetCookiesTests = []struct {
 		Header{"Set-Cookie": {`special-8=","`}},
 		[]*Cookie{{Name: "special-8", Value: ",", Raw: `special-8=","`}},
 	},
+	{
+		Header{"Set-Cookie": {`auth={"access_token":"token1","token_type":"bearer","expires_in":604799,"scope":"store","role":"PUBLIC","roles":["PUBLIC"]}; path=/; SameSite=Strict; HttpOnly; Secure`}},
+		[]*Cookie{{
+			Name: "auth",
+			Value: `{"access_token":"token1","token_type":"bearer","expires_in":604799,"scope":"store","role":"PUBLIC","roles":["PUBLIC"]}`,
+			Path: "/",
+			SameSite: SameSiteStrictMode,
+			HttpOnly: true,
+			Secure: true,
+			Raw: `auth={"access_token":"token1","token_type":"bearer","expires_in":604799,"scope":"store","role":"PUBLIC","roles":["PUBLIC"]}; path=/; SameSite=Strict; HttpOnly; Secure`,
+		}},
+	},
 
 	// TODO(bradfitz): users have reported seeing this in the
 	// wild, but do browsers handle it? RFC 6265 just says "don't
