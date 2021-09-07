@@ -80,20 +80,22 @@ func compareSettings(ID http2.SettingID, output uint32, expected uint32) error {
 // Round trip test, makes sure that the changes made doesn't break the library
 func TestRoundTrip(t *testing.T) {
 	settings := []http2.Setting{
-		{ID: http2.SettingHeaderTableSize, Val: 65536},
 		{ID: http2.SettingMaxConcurrentStreams, Val: 1000},
-		{ID: http2.SettingInitialWindowSize, Val: 6291456},
 		{ID: http2.SettingMaxFrameSize, Val: 16384},
 		{ID: http2.SettingMaxHeaderListSize, Val: 262144},
 	}
 	tr := http2.Transport{
 		Settings: settings,
 	}
-	req, err := http.NewRequest("GET", "www.google.com", nil)
+	req, err := http.NewRequest("GET", "https://www.google.com", nil)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	tr.RoundTrip(req)
+	resp, err := tr.RoundTrip(req)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	defer resp.Body.Close()
 }
 
 // Tests if content-length header is present in request headers during POST
