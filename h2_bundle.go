@@ -6826,6 +6826,17 @@ const (
 	http2defaultUserAgent = "Go-http-client/2.0"
 )
 
+// FlowSettings allows users to set transportDefaultConnFlow and transportDefaultStreamFlow on the Transport
+type http2FlowSettings struct {
+	// Conn is how many connection-level flow control tokens
+	// we give the server at startup, past the default 64k
+	Conn int
+	// Stream is how many stream-level flow control tokens
+	// we announce to the peer, and how many bytes we buffer
+	// per stream
+	Stream int
+}
+
 // Transport is an HTTP/2 Transport.
 //
 // A Transport internally caches connections to servers. It is safe
@@ -6920,6 +6931,8 @@ type http2Transport struct {
 	Settings          []http2Setting
 	InitialWindowSize uint32 // if nil, will use global initialWindowSize
 	HeaderTableSize   uint32 // if nil, will use global initialHeaderTableSize
+
+	FlowSettings http2FlowSettings
 }
 
 func (t *http2Transport) maxHeaderListSize() uint32 {
@@ -6941,7 +6954,6 @@ func (t *http2Transport) pingTimeout() time.Duration {
 		return 15 * time.Second
 	}
 	return t.PingTimeout
-
 }
 
 // ConfigureTransport configures a net/http HTTP/1 Transport to use HTTP/2.
@@ -7482,7 +7494,11 @@ func (t *http2Transport) newClientConn(c net.Conn, addr string, singleUse bool) 
 	}
 
 	cc.cond = sync.NewCond(&cc.mu)
-	cc.flow.add(int32(http2initialWindowSize))
+	if t.InitialWindowSize != 0 {
+		cc.flow.add(int32(t.InitialWindowSize))
+	} else {
+		cc.flow.add(int32(http2initialWindowSize))
+	}
 
 	// TODO: adjust this writer size to account for frame size +
 	// MTU + crypto/tls record padding.
@@ -7529,10 +7545,22 @@ func (t *http2Transport) newClientConn(c net.Conn, addr string, singleUse bool) 
 			initialSettings = append(initialSettings, setting)
 		}
 	}
+
+	// use Transport frame settings if specified
+	defaultConnFlow := http2transportDefaultConnFlow
+	if t.FlowSettings.Conn != 0 {
+		defaultConnFlow = t.FlowSettings.Conn
+	}
+	defaultStreamFlow := http2transportDefaultStreamFlow
+	if t.FlowSettings.Stream != 0 {
+		defaultStreamFlow = t.FlowSettings.Stream
+	}
+
+	transportInitialWindowSize := http2initialWindowSize
 	if t.InitialWindowSize != 0 {
 		initialSettings = append(initialSettings, http2Setting{ID: http2SettingInitialWindowSize, Val: t.InitialWindowSize})
 	} else {
-		initialSettings = append(initialSettings, http2Setting{ID: http2SettingInitialWindowSize, Val: http2transportDefaultStreamFlow})
+		initialSettings = append(initialSettings, http2Setting{ID: http2SettingInitialWindowSize, Val: uint32(defaultStreamFlow)})
 	}
 	if t.HeaderTableSize != 0 {
 		initialSettings = append(initialSettings, http2Setting{ID: http2SettingHeaderTableSize, Val: t.HeaderTableSize})
@@ -7545,8 +7573,8 @@ func (t *http2Transport) newClientConn(c net.Conn, addr string, singleUse bool) 
 
 	cc.bw.Write(http2clientPreface)
 	cc.fr.WriteSettings(initialSettings...)
-	cc.fr.WriteWindowUpdate(0, http2transportDefaultConnFlow)
-	cc.inflow.add(http2transportDefaultConnFlow + http2initialWindowSize)
+	cc.fr.WriteWindowUpdate(0, uint32(defaultConnFlow))
+	cc.inflow.add(int32(defaultConnFlow) + int32(transportInitialWindowSize))
 	cc.bw.Flush()
 	if cc.werr != nil {
 		cc.Close()
@@ -9045,10 +9073,20 @@ func (b http2transportResponseBody) Read(p []byte) (n int, err error) {
 	cc.mu.Lock()
 	defer cc.mu.Unlock()
 
+	// use transport settings if specified
+	defaultConnFlow := http2transportDefaultConnFlow
+	if cc.t.FlowSettings.Conn != 0 {
+		defaultConnFlow = cc.t.FlowSettings.Conn
+	}
+	defaultStreamFlow := http2transportDefaultStreamFlow
+	if cc.t.FlowSettings.Stream != 0 {
+		defaultStreamFlow = cc.t.FlowSettings.Stream
+	}
+
 	var connAdd, streamAdd int32
 	// Check the conn-level first, before the stream-level.
-	if v := cc.inflow.available(); v < http2transportDefaultConnFlow/2 {
-		connAdd = http2transportDefaultConnFlow - v
+	if v := cc.inflow.available(); v < int32(defaultConnFlow)/2 {
+		connAdd = int32(defaultConnFlow) - v
 		cc.inflow.add(connAdd)
 	}
 	if err == nil { // No need to refresh if the stream is over or failed.
@@ -9056,8 +9094,8 @@ func (b http2transportResponseBody) Read(p []byte) (n int, err error) {
 		// consumed by the client) when computing flow control for this
 		// stream.
 		v := int(cs.inflow.available()) + cs.bufPipe.Len()
-		if v < http2transportDefaultStreamFlow-http2transportDefaultStreamMinRefresh {
-			streamAdd = int32(http2transportDefaultStreamFlow - v)
+		if v < defaultStreamFlow-http2transportDefaultStreamMinRefresh {
+			streamAdd = int32(defaultStreamFlow - v)
 			cs.inflow.add(streamAdd)
 		}
 	}

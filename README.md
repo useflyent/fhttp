@@ -48,7 +48,7 @@ Although the header key is capitalized, the header order slice must be in lowerc
 
 ## Connection settings
 
-fhhtp has Chrome-like connection settings, as shown below:
+fhttp has Chrome-like connection settings, as shown below:
 
 ```text
 SETTINGS_HEADER_TABLE_SIZE = 65536 (2^16)
@@ -71,6 +71,9 @@ SETTINGS_MAX_HEADER_LIST_SIZE = 10485760
 ```
 
 The ENABLE_PUSH implementation was merged from [this Pull Request](https://go-review.googlesource.com/c/net/+/181497/).
+
+## Custom HTTP2 Transport Flow Settings
+To set a custom value for update frame, create a `http2.FlowSettings` and add it to the `Transport.FlowSettings` field. For example, to mimic the Chrome update frame, set `FrameSettings`'s `Conn` value to `15663105`.
 
 ## gzip, deflate, and br encoding
 
@@ -127,3 +130,5 @@ Special thanks to the following people for helping me with this project.
 * [cc](https://github.com/x04/) for guiding me when I first started this project and inspiring me with [cclient](https://github.com/x04/cclient)
 
 * [umasi](https://github.com/umasii) for being good rubber ducky and giving me tips for http2 headers
+
+* [car](https://github.com/Carcraftz) for pointing the custom http2 update frame to me
