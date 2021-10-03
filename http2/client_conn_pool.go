@@ -10,7 +10,7 @@ import (
 	"crypto/tls"
 	"sync"
 
-	http "github.com/useflyent/fhttp"
+	http "github.com/bynf/fhttp"
 )
 
 // ClientConnPool manages a pool of HTTP/2 client connections.

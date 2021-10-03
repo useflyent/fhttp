@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/useflyent/fhttp/internal"
+	"github.com/bynf/fhttp/internal"
 )
 
 type respTest struct {

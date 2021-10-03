@@ -20,7 +20,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/andybalholm/brotli"
 	"io"
 	"log"
 	"net"
@@ -33,7 +32,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/useflyent/fhttp/httptrace"
+	"github.com/andybalholm/brotli"
+
+	"github.com/bynf/fhttp/httptrace"
 
 	"golang.org/x/net/http/httpguts"
 	"golang.org/x/net/http/httpproxy"

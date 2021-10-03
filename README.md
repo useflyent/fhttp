@@ -94,7 +94,7 @@ with
 
 ```go
 import (
-    http "github.com/useflyent/fhttp"
+    http "github.com/bynf/fhttp"
 )
 ```
 

@@ -19,7 +19,7 @@ import (
 	"strconv"
 	"strings"
 
-	http "github.com/useflyent/fhttp"
+	http "github.com/bynf/fhttp"
 )
 
 // Request returns the HTTP request as represented in the current

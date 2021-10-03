@@ -35,8 +35,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/useflyent/fhttp/http2"
-	"github.com/useflyent/fhttp/http2/hpack"
+	"github.com/bynf/fhttp/http2"
+	"github.com/bynf/fhttp/http2/hpack"
 	"golang.org/x/term"
 )
 
