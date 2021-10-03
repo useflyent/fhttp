@@ -2199,7 +2199,10 @@ func (rl *clientConnReadLoop) handleResponse(cs *clientStream, f *MetaHeadersFra
 	res.Body = transportResponseBody{cs}
 	go cs.awaitRequestCancel(cs.req)
 
-	res.Body = http.DecompressBody(res)
+	if !cs.cc.t.DisableCompression {
+        res.Body = http.DecompressBody(res)
+    }
+
 	return res, nil
 }
 
