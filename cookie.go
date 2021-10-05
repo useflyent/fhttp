@@ -419,7 +419,7 @@ func sanitizeOrWarn(fieldName string, valid func(byte) bool, v string) string {
 
 func parseCookieValue(raw string, allowDoubleQuote bool) (string, bool) {
 	// Strip the quotes, if present.
-	if allowDoubleQuote && len(raw) > 1 && raw[0] == '"' && raw[len(raw)-1] == '"' {
+	if !allowDoubleQuote && len(raw) > 1 && raw[0] == '"' && raw[len(raw)-1] == '"' {
 		raw = raw[1 : len(raw)-1]
 	}
 	for i := 0; i < len(raw); i++ {
